@@ -123,12 +123,15 @@ public class StandardService extends LifecycleMBeanBase implements Service {
     public void setContainer(Engine engine) {
         Engine oldEngine = this.engine;
         if (oldEngine != null) {
+            // help gc
             oldEngine.setService(null);
         }
+        // service和组件双向关联
         this.engine = engine;
         if (this.engine != null) {
             this.engine.setService(this);
         }
+
         if (getState().isAvailable()) {
             if (this.engine != null) {
                 try {
