@@ -310,6 +310,7 @@ public class HostConfig implements LifecycleListener {
         }
 
         // Process the event that has occurred
+        // 处理对应的事件
         if (event.getType().equals(Lifecycle.PERIODIC_EVENT)) {
             check();
         } else if (event.getType().equals(Lifecycle.BEFORE_START_EVENT)) {
@@ -969,6 +970,7 @@ public class HostConfig implements LifecycleListener {
                         Long.valueOf(0));
             }
 
+            // 给Context容器添加了ContextConfig监听器。而在Context的startInternal方法中，发送了监听事件
             Class<?> clazz = Class.forName(host.getConfigClass());
             LifecycleListener listener = (LifecycleListener) clazz.getConstructor().newInstance();
             context.addLifecycleListener(listener);
@@ -1603,13 +1605,14 @@ public class HostConfig implements LifecycleListener {
      * Check status of all webapps.
      */
     protected void check() {
-
+        // 这个条件对应这server.xml的Host配置的autoDeploy="true"
         if (host.getAutoDeploy()) {
             // Check for resources modification to trigger redeployment
             DeployedApplication[] apps =
                 deployed.values().toArray(new DeployedApplication[0]);
             for (int i = 0; i < apps.length; i++) {
                 if (!isServiced(apps[i].name))
+                    // 资源查找
                     checkResources(apps[i], false);
             }
 
@@ -1619,6 +1622,7 @@ public class HostConfig implements LifecycleListener {
             }
 
             // Hotdeploy applications
+            // 热部署
             deployApps();
         }
     }

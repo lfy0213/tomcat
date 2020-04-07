@@ -577,7 +577,7 @@ public abstract class AbstractProtocol<S> implements ProtocolHandler,
         String endpointName = getName();
         endpoint.setName(endpointName.substring(1, endpointName.length()-1));
         endpoint.setDomain(domain);
-
+        // 初始化endpoint
         endpoint.init();
     }
 

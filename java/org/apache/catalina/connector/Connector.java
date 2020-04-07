@@ -965,6 +965,8 @@ public class Connector extends LifecycleMBeanBase  {
 
         super.initInternal();
 
+        // 初始化Adapter
+        // Adapter的作用是将包装后的数据交给Container
         // Initialize adapter
         adapter = new CoyoteAdapter(this);
         protocolHandler.setAdapter(adapter);
@@ -990,6 +992,9 @@ public class Connector extends LifecycleMBeanBase  {
         }
 
         try {
+            // 初始化protocolHandler
+            // protocolHandler的主要作用是接收客户端链接与客户端请求，将请求封装成http格式
+            // 然后将http格式的数据通过Adapter转给Container
             protocolHandler.init();
         } catch (Exception e) {
             throw new LifecycleException(

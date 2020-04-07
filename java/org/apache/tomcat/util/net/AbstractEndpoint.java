@@ -1102,6 +1102,7 @@ public abstract class AbstractEndpoint<S> {
 
     public void init() throws Exception {
         if (bindOnInit) {
+            // 绑定服务端需要监听的端口
             bind();
             bindState = BindState.BOUND_ON_INIT;
         }

@@ -283,11 +283,14 @@ public class WebappLoader extends LifecycleMBeanBase
      */
     @Override
     public void backgroundProcess() {
+        // 如果开启了自动部署reloadable=true，默认是开启的
+        // 并且当前文件有修改的痕迹
         if (reloadable && modified()) {
             try {
                 Thread.currentThread().setContextClassLoader
                     (WebappLoader.class.getClassLoader());
                 if (context != null) {
+                    // 进行热部署
                     context.reload();
                 }
             } finally {

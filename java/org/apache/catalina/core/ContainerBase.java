@@ -1356,6 +1356,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
             try {
                 while (!threadDone) {
                     try {
+                        // 10s
                         Thread.sleep(backgroundProcessorDelay * 1000L);
                     } catch (InterruptedException e) {
                         // Ignore

@@ -292,10 +292,14 @@ public class Catalina {
         digester.setUseContextClassLoader(true);
 
         // Configure the actions we will be using
+        // 如果遇到”Server“元素起始符;则创建"org.apache.catalina.core.StandardServer"的一个实例对象，并压入堆栈;
+        // 如果"Server"元素的"className"属性存在，那么用这个属性的值所指定的class来创建实例对象，并压入堆栈。
         digester.addObjectCreate("Server",
                                  "org.apache.catalina.core.StandardServer",
                                  "className");
+        // 从server.xml读取"Server"元素的所有{属性:值}配对,用对应的Setter方法将属性值设置到堆栈顶层元素(Server)。
         digester.addSetProperties("Server");
+        // 遇到"Server"结束符时，调用“次顶层元素(Catalina)”的"setServer"方法，
         digester.addSetNext("Server",
                             "setServer",
                             "org.apache.catalina.Server");
