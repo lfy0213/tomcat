@@ -77,3 +77,20 @@ instructions for reporting a bug
 ### Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for more info.
+
+
+
+IDEA中tomcat启动配置
+
+catalina-home目录下，新建temp,logs,work,lib目录
+
+vm启动参数：
+
+-Dcatalina.home=/Users/moxiaosheng/dev/projects/tomcat/catalina-home
+-Dcatalina.base=/Users/moxiaosheng/dev/projects/tomcat/catalina-home
+-Djava.endorsed.dirs/Users/moxiaosheng/dev/projects/tomcat/catalina-home/endorsed
+-Djava.io.tmpdir=/Users/moxiaosheng/dev/projects/tomcat/catalina-home/temp
+-Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+-Djava.util.logging.config.file=/Users/moxiaosheng/dev/projects/tomcat/catalina-home/conf/logging.properties
+
+如果编译的时候测试用例有报错的话，直接注掉
