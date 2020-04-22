@@ -127,7 +127,9 @@ public class SetNextRule extends Rule {
     public void end(String namespace, String name) throws Exception {
 
         // Identify the objects to be used
+        // 获取栈顶元素
         Object child = digester.peek(0);
+        // 获取次栈顶元素
         Object parent = digester.peek(1);
         if (digester.log.isDebugEnabled()) {
             if (parent == null) {
@@ -142,6 +144,7 @@ public class SetNextRule extends Rule {
         }
 
         // Call the specified method
+        // 调用次栈顶元素parent对应的methodName方法，参数为child对象，类型为paramType
         IntrospectionUtils.callMethod1(parent, methodName,
                 child, paramType, digester.getClassLoader());
 

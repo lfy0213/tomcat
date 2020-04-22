@@ -95,16 +95,18 @@ public class MapperListener extends LifecycleMBeanBase
     public void startInternal() throws LifecycleException {
 
         setState(LifecycleState.STARTING);
-
+        // 获取engine
         Engine engine = service.getContainer();
         if (engine == null) {
             return;
         }
-
+        // 寻找默认的host
         findDefaultHost();
-
+        // 将自己添加到engine以及engine下的所有组件
         addListeners(engine);
 
+        // 遍历所有的host，如果host的状态不是新建NEW状态，那么将host注册到mapper
+        // 如果host下有context，那么将context也一并注册到mapper
         Container[] conHosts = engine.findChildren();
         for (Container conHost : conHosts) {
             Host host = (Host) conHost;
@@ -301,9 +303,11 @@ public class MapperListener extends LifecycleMBeanBase
     private void registerHost(Host host) {
 
         String[] aliases = host.findAliases();
+        // 将host添加到mapper
         mapper.addHost(host.getName(), aliases, host);
-
+        // 遍历当前host下所有的context
         for (Container container : host.findChildren()) {
+            // 如果context可用，那么将context注册到mapper
             if (container.getState().isAvailable()) {
                 registerContext((Context) container);
             }

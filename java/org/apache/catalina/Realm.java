@@ -33,6 +33,8 @@ import org.ietf.jgss.GSSContext;
  * level, but will typically only be attached to a Context, or higher level,
  * Container.
  *
+ * 存储了用户、密码及权限等的数据对象，它的存储方式可能是内存、xml文件或数据库等。它的作用主要是配合Tomcat实现资源认证模块
+ * Tomcat中有很多级别的Realm域，一般情况每个container都有不同的Realm
  * @author Craig R. McClanahan
  */
 public interface Realm {

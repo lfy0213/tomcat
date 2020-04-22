@@ -54,6 +54,8 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
 
     /**
      * Associated Coyote request.
+     * org.apache.coyote.Request，缓冲区字节流初步解析之后形成的request
+     * 需要经过Coyote适配器适配之后，才会变成符合servlet规范的request
      */
     private final Request request;
 
@@ -87,6 +89,8 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
     /**
      * Pos of the end of the header in the buffer, which is also the
      * start of the body.
+     * 缓冲区buf中HTTP协议请求头部结束的位置
+     * 同时也表示报文体的开始位置
      */
     private int end;
 
@@ -353,9 +357,10 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
         }
         //
         // Skipping blank lines
-        //
+        // 跳过空行
         if (parsingRequestLinePhase < 2) {
             byte chr = 0;
+            // 遍历整行，直到遇见换行符/r，/n
             do {
 
                 // Read new bytes if needed
@@ -393,6 +398,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
                     request.setStartTime(System.currentTimeMillis());
                 }
                 chr = byteBuffer.get();
+                // 这两个换行符的区别是，/r 光标会回到当前行的行首，/n会去到下一行的行首
             } while ((chr == Constants.CR) || (chr == Constants.LF));
             byteBuffer.position(byteBuffer.position() - 1);
 
@@ -403,6 +409,7 @@ public class Http11InputBuffer implements InputBuffer, ApplicationBufferHandler 
                         + new String(byteBuffer.array(), byteBuffer.position(), byteBuffer.remaining(), StandardCharsets.ISO_8859_1) + "]");
             }
         }
+        // 解析方法名
         if (parsingRequestLinePhase == 2) {
             //
             // Reading the method name

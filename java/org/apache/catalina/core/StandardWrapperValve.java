@@ -169,11 +169,13 @@ final class StandardWrapperValve
         request.setAttribute(Globals.DISPATCHER_REQUEST_PATH_ATTR,
                 requestPathMB);
         // Create the filter chain for this request
+        // 创建FilterChain链
         ApplicationFilterChain filterChain =
                 ApplicationFilterFactory.createFilterChain(request, wrapper, servlet);
 
         // Call the filter chain for this request
         // NOTE: This also calls the servlet's service() method
+        // 执行Filter
         try {
             if ((servlet != null) && (filterChain != null)) {
                 // Swallow output if needed
@@ -256,11 +258,13 @@ final class StandardWrapperValve
         }
 
         // Release the filter chain (if any) for this request
+        // 释放Filter
         if (filterChain != null) {
             filterChain.release();
         }
 
         // Deallocate the allocated servlet instance
+        // 取消已分配的Servlet
         try {
             if (servlet != null) {
                 wrapper.deallocate(servlet);

@@ -277,6 +277,8 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
      * resources may be requested by binary name (classes) or path (other
      * resources such as property files) and the mapping from binary name to
      * path is unambiguous but the reverse mapping is ambiguous.
+     *
+     * 资源缓存
      */
     protected final Map<String, ResourceEntry> resourceEntries =
             new ConcurrentHashMap<>();
@@ -293,7 +295,9 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
      */
     protected boolean delegate = false;
 
-
+    /**
+     * jar包的修改时间
+     */
     private final HashMap<String,Long> jarModificationTimes = new HashMap<>();
 
 
@@ -723,6 +727,8 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
      * Have one or more classes or resources been modified so that a reload
      * is appropriate?
      * @return <code>true</code> if there's been a modification
+     *
+     * 检查当前classLoader加载的资源是否有变更
      */
     public boolean modified() {
 
@@ -744,13 +750,14 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
         }
 
         // Check if JARs have been added or removed
+        // 检查jia包是否有变更
         WebResource[] jars = resources.listResources("/WEB-INF/lib");
         // Filter out non-JAR resources
-
         int jarCount = 0;
         for (WebResource jar : jars) {
             if (jar.getName().endsWith(".jar") && jar.isFile() && jar.canRead()) {
                 jarCount++;
+                // 从缓存中获取jar包上一次的修改时间，如果没有获取到，那么这个jar就是新增的
                 Long recordedLastModified = jarModificationTimes.get(jar.getName());
                 if (recordedLastModified == null) {
                     // Jar has been added
@@ -758,6 +765,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                             resources.getContext().getName()));
                     return true;
                 }
+                // 如果jar包修改时间和缓存中的修改时间不一致，那么jar有修改
                 if (recordedLastModified.longValue() != jar.getLastModified()) {
                     // Jar has been changed
                     log.info(sm.getString("webappClassLoader.jarsModified",
@@ -767,6 +775,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
         }
 
+        // 比较jar包数量
         if (jarCount < jarModificationTimes.size()){
             log.info(sm.getString("webappClassLoader.jarsRemoved",
                     resources.getContext().getName()));
@@ -1224,6 +1233,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             checkStateForClassLoading(name);
 
             // (0) Check our previously loaded local class cache
+            // 查找本地缓存中是否有这个类
             clazz = findLoadedClass0(name);
             if (clazz != null) {
                 if (log.isDebugEnabled())
@@ -1234,6 +1244,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             // (0.1) Check our previously loaded class cache
+            // 如果本地缓存中不存在，那么检查JVM缓存中是否存在这个类
             clazz = findLoadedClass(name);
             if (clazz != null) {
                 if (log.isDebugEnabled())
@@ -1246,6 +1257,11 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             // (0.2) Try loading the class with the system class loader, to prevent
             //       the webapp from overriding Java SE classes. This implements
             //       SRV.10.7.2
+            // 尝试使用Java中的系统类加载器进行类加载，这么做的目的是为了防止javaSE中的类被覆盖
+            /**
+             * 搜索路径,三个类加载器，bootstrap--->ext---->system
+             * <JAVA_HOME>/jre/lib ---> <JAVA_HOME>/jre/lib/ext ---> CLASSPATH
+             */
             String resourceName = binaryNameToPath(name, false);
 
             ClassLoader javaseLoader = getJavaseClassLoader();
@@ -1277,7 +1293,8 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 // ClassNotFoundException.
                 tryLoadingFromJavaseLoader = true;
             }
-
+            // 如果tryLoadingFromJavaseLoader不为空，那么进行类加载
+            // 不为空也说明了这个类很有可能是javaSE中类
             if (tryLoadingFromJavaseLoader) {
                 try {
                     clazz = javaseLoader.loadClass(name);
@@ -1306,13 +1323,22 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 }
             }
 
+            // 判断是否需要委托CommonLoader加载器进行加载
+            // 条件delegate，默认是不开启委托的
+            // filter()主要是判断加载的类，是不是tomcat本身框架中的类，如果是的话，那么就实行委托，让CommonLoader加载
+            // 比如javax.servlet   org.apache.tomcat.xxx等
             boolean delegateLoad = delegate || filter(name, true);
-
+            /**
+             * commonLoader搜索路径
+             * $CATALINA_BASE/lib--->$CATALINA_HOME/lib
+             */
             // (1) Delegate to our parent if requested
+            // 委托父类CommonLoader进行加载
             if (delegateLoad) {
                 if (log.isDebugEnabled())
                     log.debug("  Delegating to parent classloader1 " + parent);
                 try {
+                    // 传入了parent进行委托加载
                     clazz = Class.forName(name, false, parent);
                     if (clazz != null) {
                         if (log.isDebugEnabled())
@@ -1326,15 +1352,22 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 }
             }
 
+            // 走到这里，也就是自己(WebappClassLoader)来加载了
+            /**
+             * WebappClassLoader搜索路径
+             * /WEB-INF/classes--->/WEB-INF/lib。
+             */
             // (2) Search local repositories
             if (log.isDebugEnabled())
                 log.debug("  Searching local repositories");
             try {
+                // 查找类
                 clazz = findClass(name);
                 if (clazz != null) {
                     if (log.isDebugEnabled())
                         log.debug("  Loading class from local repository");
                     if (resolve)
+                        // 类解析
                         resolveClass(clazz);
                     return (clazz);
                 }
@@ -1343,6 +1376,8 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
             }
 
             // (3) Delegate to parent unconditionally
+            // 如果WebappClassLoader也没找到，那么无条件的委托父类进行尝试加载，进行一个容错处理
+            // 如果之前已经委托过了，那么这里的逻辑就不会在执行了
             if (!delegateLoad) {
                 if (log.isDebugEnabled())
                     log.debug("  Delegating to parent classloader at end: " + parent);
@@ -1360,7 +1395,7 @@ public abstract class WebappClassLoaderBase extends URLClassLoader
                 }
             }
         }
-
+        // 抛ClassNotFoundException
         throw new ClassNotFoundException(name);
     }
 

@@ -45,12 +45,14 @@ public final class LifecycleEvent extends EventObject {
 
     /**
      * The event data associated with this event.
+     * 与事件关连的事件数据
      */
     private final Object data;
 
 
     /**
      * The event type this instance represents.
+     * 事件类型
      */
     private final String type;
 
@@ -64,6 +66,8 @@ public final class LifecycleEvent extends EventObject {
 
 
     /**
+     *
+     * 获取事件源，也就是事件的产生者
      * @return the Lifecycle on which this event occurred.
      */
     public Lifecycle getLifecycle() {

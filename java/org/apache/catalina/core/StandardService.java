@@ -85,7 +85,7 @@ public class StandardService extends LifecycleMBeanBase implements Service {
     private final Object connectorsLock = new Object();
 
     /**
-     *
+     * service中的全局线程池，可被所有的connector共用
      */
     protected final ArrayList<Executor> executors = new ArrayList<>();
 
@@ -534,10 +534,12 @@ public class StandardService extends LifecycleMBeanBase implements Service {
         super.initInternal();
 
         if (engine != null) {
+            // 初始化engine
             engine.init();
         }
 
         // Initialize any Executors
+        // 初始化service中的全局线程池
         for (Executor executor : findExecutors()) {
             if (executor instanceof JmxEnabled) {
                 ((JmxEnabled) executor).setDomain(getDomain());
@@ -546,6 +548,8 @@ public class StandardService extends LifecycleMBeanBase implements Service {
         }
 
         // Initialize mapper listener
+        // 初始化mapper监听器，在这里，会将host，context注册到mapper
+        // 同时将mapperListener注册到host以及context，当host和context发生变更时，会回调这个监听器取消注册
         mapperListener.init();
 
         // Initialize our defined Connectors

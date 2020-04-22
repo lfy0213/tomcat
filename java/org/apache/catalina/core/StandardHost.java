@@ -40,6 +40,7 @@ import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleListener;
 import org.apache.catalina.Valve;
 import org.apache.catalina.loader.WebappClassLoaderBase;
+import org.apache.catalina.startup.HostConfig;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.ExceptionUtils;
@@ -725,7 +726,7 @@ public class StandardHost extends ContainerBase implements Host {
      */
     @Override
     public void addChild(Container child) {
-
+        // 为context增加一个内存泄漏监听器
         child.addLifecycleListener(new MemoryLeakTrackingListener());
 
         if (!(child instanceof Context))
@@ -743,9 +744,16 @@ public class StandardHost extends ContainerBase implements Host {
     private class MemoryLeakTrackingListener implements LifecycleListener {
         @Override
         public void lifecycleEvent(LifecycleEvent event) {
+            // 监听context启动事件
             if (event.getType().equals(Lifecycle.AFTER_START_EVENT)) {
                 if (event.getSource() instanceof Context) {
                     Context context = ((Context) event.getSource());
+                    // 将context关连的webAppClassLoader加到一个WeakHashMap中,起一个监控作用
+                    // 当context卸载的时候，会将context中的classLoader应用置为null
+                    // 那么理想状况下，在tomcat中就只有这个WeakHashMap中存在废弃的classLoader引用了
+                    // weak引用，在下一次gc时会被回收，这样以来，classLoader就会被回收
+                    // 如果我们之后在WeakHashMap还能发现废弃的引用没被回收
+                    // 那么证明，在某个地方存在了classLoader的强引用，导致无法卸载，发生了内存泄漏
                     childClassLoaders.put(context.getLoader().getClassLoader(),
                             context.getServletContext().getContextPath());
                 }
@@ -846,6 +854,7 @@ public class StandardHost extends ContainerBase implements Host {
     protected synchronized void startInternal() throws LifecycleException {
 
         // Set error report valve
+        // 添加了一个ErrorReportValve到pipeline
         String errorValve = getErrorReportValveClass();
         if ((errorValve != null) && (!errorValve.equals(""))) {
             try {
@@ -869,6 +878,11 @@ public class StandardHost extends ContainerBase implements Host {
                         errorValve), t);
             }
         }
+        /**
+         * todo 调用父类的通用逻辑，然后会设置组件状态为starting，触发start事件
+         * 这个时候，HostConfig会响应该事件，这里比较重要
+         * {@link HostConfig#lifecycleEvent(org.apache.catalina.LifecycleEvent) }
+         */
         super.startInternal();
     }
 

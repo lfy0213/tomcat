@@ -32,6 +32,7 @@ public class SocketBufferHandler {
 
     public SocketBufferHandler(int readBufferSize, int writeBufferSize,
             boolean direct) {
+        // 根据direct决定是否使用堆外内存，默认时false，也就是默认使用堆内内存
         this.direct = direct;
         if (direct) {
             readBuffer = ByteBuffer.allocateDirect(readBufferSize);

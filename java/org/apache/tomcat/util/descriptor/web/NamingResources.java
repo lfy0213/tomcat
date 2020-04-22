@@ -24,6 +24,10 @@ package org.apache.tomcat.util.descriptor.web;
  * JNDI resource. Only Catalina implements this interface but because the
  * web.xml representation is shared this interface has to be visible to Catalina
  * and Jasper.
+ *
+ * 负责的工作就是将配置文件中声明的不同的资源及其属性映射到内存中
+ * 命名资源的配置有两个地方，分别为Tomcat容器的server.xml文件和每个Web项目的context.xml文件
+ * 它们通过Digester框架读取配置文件中对应的属性并设置到NamingResource的属性中，
  */
 public interface NamingResources {
 

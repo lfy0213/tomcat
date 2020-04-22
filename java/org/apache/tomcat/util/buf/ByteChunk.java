@@ -537,7 +537,10 @@ public final class ByteChunk extends AbstractChunk {
         return StringCache.toString(this);
     }
 
-
+    /**
+     * 采用ISO_8859_1对字节流进行解码
+     * @return
+     */
     public String toStringInternal() {
         if (charset == null) {
             charset = DEFAULT_CHARSET;

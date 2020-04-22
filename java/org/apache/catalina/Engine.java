@@ -38,6 +38,8 @@ package org.apache.catalina;
  * hierarchy. Therefore, the implementation's <code>setParent()</code> method
  * should throw <code>IllegalArgumentException</code>.
  *
+ *
+ * 代表着一个全局的Servlet引擎
  * @author Craig R. McClanahan
  */
 public interface Engine extends Container {

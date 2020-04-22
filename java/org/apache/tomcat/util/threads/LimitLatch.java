@@ -57,8 +57,18 @@ public class LimitLatch {
         }
     }
 
+    /**
+     * 自定义同步器
+     */
     private final Sync sync;
+    /**
+     * 当前连接数
+     */
     private final AtomicLong count;
+
+    /**
+     * 允许的最大连接数
+     */
     private volatile long limit;
     private volatile boolean released = false;
 

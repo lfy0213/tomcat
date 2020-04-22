@@ -36,6 +36,8 @@ import org.apache.tomcat.util.res.StringManager;
  * <b>USAGE CONSTRAINT</b>:  This implementation is likely to be useful only
  * when processing HTTP requests.
  *
+ * 这个阀门的主要作用是判断请求是否访问了禁止目录
+ * 如WEB-INF或META-INF目录，并向客户端发送通知报文“HTTP/1.1 100 Continue”，最后调用子容器wrapper管道。
  * @author Craig R. McClanahan
  */
 final class StandardContextValve extends ValveBase {

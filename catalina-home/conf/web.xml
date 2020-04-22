@@ -15,6 +15,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
+<!--Tomcat提供的应用的默认配置文件，主要定义了基础的servlet和MIME映射
+    如果部署的应用中没有web.xml文件，那么就会用该配置文件进行初始化部署描述
+    如果部署的应用中有web.xml文件，那么会将这两个web.xml文件合并，如果属性有重复，那么应用级别的web.xml中的属性会覆盖全局(也就是这个web.xml)中的配置
+-->
 <web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee

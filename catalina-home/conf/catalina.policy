@@ -25,6 +25,7 @@
 // * Read, write and delete access to the web application's working directory
 // ============================================================================
 
+// tomcat在安全模式下运行是，此文件将作为默认的安全策略配置
 
 // ========== SYSTEM CODE PERMISSIONS =========================================
 

@@ -132,8 +132,16 @@ public final class Bootstrap {
      */
     private Object catalinaDaemon = null;
 
-
+    /**
+     * 公共类加载器，主要加载${CATALINA_BASE/lib} & ${CATALINA_HOME/lib}两个目录下的所有jar以及.class文件
+     */
     ClassLoader commonLoader = null;
+
+    /**
+     * tomcat5.0，这两个classLoader继承自commonLoader，各自实现不同的功能
+     * tomcat7.0及以上，catalina.properties配置文件没有对server.loader和share.loader两项进行配置，这两个的值都是commonLoader
+     * 所在在tomcat7.0及以上版本中，只有common和webAppClassLoad，webAppClassLoad继承自common
+     */
     ClassLoader catalinaLoader = null;
     ClassLoader sharedLoader = null;
 
@@ -143,6 +151,7 @@ public final class Bootstrap {
 
     private void initClassLoaders() {
         try {
+            // 创建common类加载器
             commonLoader = createClassLoader("common", null);
             if( commonLoader == null ) {
                 // no config file, default to this loader - we might be in a 'single' env.

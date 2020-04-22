@@ -758,10 +758,13 @@ public class StandardWrapper extends ContainerBase
         boolean newInstance = false;
 
         // If not SingleThreadedModel, return the same instance every time
+        // 如果没有实现SingleThreadModel接口，那么以单例模式运行，所有线程共享一个Servlet
         if (!singleThreadModel) {
             // Load and initialize our instance if necessary
+            // 如果servlet还未初始化，那么开始load
             if (instance == null || !instanceInitialized) {
                 synchronized (this) {
+                    // 创建servlet实例
                     if (instance == null) {
                         try {
                             if (log.isDebugEnabled()) {
@@ -785,12 +788,13 @@ public class StandardWrapper extends ContainerBase
                             throw new ServletException(sm.getString("standardWrapper.allocate"), e);
                         }
                     }
+                    // 初始化servlet
                     if (!instanceInitialized) {
                         initServlet(instance);
                     }
                 }
             }
-
+            // 如果实现了SingleThreadModel接口，那么一条线程独占一个Servlet
             if (singleThreadModel) {
                 if (newInstance) {
                     // Have to do this outside of the sync above to prevent a
@@ -812,10 +816,12 @@ public class StandardWrapper extends ContainerBase
                 return instance;
             }
         }
-
+        // 从池子中获取Servlet，如果池子中没有了，那么就新建一个Servlet
         synchronized (instancePool) {
+            // 如果已分配的数量 > servlet的个数
             while (countAllocated.get() >= nInstances) {
                 // Allocate a new instance if possible, or else wait
+                // 如果当前servlet的个数 < 允许存在的最大servlet数量，那么新加载一个servlet放入池子中
                 if (nInstances < maxInstances) {
                     try {
                         instancePool.push(loadServlet());
@@ -826,7 +832,7 @@ public class StandardWrapper extends ContainerBase
                         ExceptionUtils.handleThrowable(e);
                         throw new ServletException(sm.getString("standardWrapper.allocate"), e);
                     }
-                } else {
+                } else {// 如果已经超过了最大的数量，那么等待
                     try {
                         instancePool.wait();
                     } catch (InterruptedException e) {

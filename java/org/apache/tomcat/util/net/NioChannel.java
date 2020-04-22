@@ -31,6 +31,9 @@ import org.apache.tomcat.util.res.StringManager;
  * This way, logic for a SSL socket channel remains the same as for
  * a non SSL, making sure we don't need to code for any exception cases.
  *
+ * 负责将数据读到缓冲区中，或将数据从缓冲区中写入，它的作用主要是用于屏蔽非SSL及SSL模式的channel读写操作细节的不同。
+ * 对于非SSL通信，报文本来就是明文，可直接读取
+ * 而对于SSL通信，报文属于加密后的密文，因此读取需要通过密钥需要解密报文，输出时需要把报文加密后再传送到套接字通道。
  * @version 1.0
  */
 public class NioChannel implements ByteChannel {
@@ -38,10 +41,18 @@ public class NioChannel implements ByteChannel {
     protected static final StringManager sm = StringManager.getManager(NioChannel.class);
 
     protected static final ByteBuffer emptyBuf = ByteBuffer.allocate(0);
-
+    /**
+     * 真正与操作系统底层Socket交互的对象，java.nio.channels.SocketChannel
+     */
     protected SocketChannel sc = null;
+    /**
+     * 向socket绑定事件时传入的Attachment对象
+     */
     protected SocketWrapperBase<NioChannel> socketWrapper = null;
-
+    /**
+     * 提供用于操作待写入SocketChannel的缓冲区和读取SocketChannel的缓冲区的协助方法
+     * 可以看作是tomcat层的输入和输出缓冲，对socket的二级缓冲
+     */
     protected final SocketBufferHandler bufHandler;
 
     protected Poller poller;

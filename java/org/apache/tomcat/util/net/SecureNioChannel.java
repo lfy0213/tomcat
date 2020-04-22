@@ -42,6 +42,7 @@ import org.apache.tomcat.util.res.StringManager;
 
 /**
  * Implementation of a secure socket channel
+ * 其实就是在NioChannel上加了一层，使之拥有SSL协议通信的能力，而具体的实现则基于jdk的SSLEngine。
  */
 public class SecureNioChannel extends NioChannel  {
 
@@ -54,12 +55,19 @@ public class SecureNioChannel extends NioChannel  {
 
     protected ByteBuffer netInBuffer;
     protected ByteBuffer netOutBuffer;
-
+    /**
+     * 负责数据的加密解密工作
+     */
     protected SSLEngine sslEngine;
 
     protected boolean sniComplete = false;
-
+    /**
+     * ssl/tls 握手是否完成
+     */
     protected boolean handshakeComplete = false;
+    /**
+     * ssl/tls 握手状态
+     */
     protected HandshakeStatus handshakeStatus; //gets set by handshake
 
     protected boolean closed = false;
@@ -73,6 +81,7 @@ public class SecureNioChannel extends NioChannel  {
         super(channel, bufHandler);
 
         // Create the network buffers (these hold the encrypted data).
+        // 创建ssl接收和输出缓冲区，根据directSslBuffer选择是堆内还是堆外内存，默认是堆内内存
         if (endpoint.getSocketProperties().getDirectSslBuffer()) {
             netInBuffer = ByteBuffer.allocateDirect(DEFAULT_NET_BUFFER_SIZE);
             netOutBuffer = ByteBuffer.allocateDirect(DEFAULT_NET_BUFFER_SIZE);

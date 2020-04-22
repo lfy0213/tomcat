@@ -101,6 +101,8 @@ public class Catalina {
 
     /**
      * The server component we are starting or stopping.
+     *
+     * tomcat server对象
      */
     protected Server server = null;
 
@@ -278,32 +280,46 @@ public class Catalina {
         long t1=System.currentTimeMillis();
         // Initialize the digester
         Digester digester = new Digester();
+        // 是否需要验证xml文档的合法性，false表示不需要进行DTD规则校验
         digester.setValidating(false);
+        // 是否进行节点设置规则校验,如果xml中相应节点没有设置解析规则会在控制台显示提示信息
         digester.setRulesValidation(true);
+
+        //将xml节点中的className作为假属性，不用调用默认的setter方法来设置属性
         Map<Class<?>, List<String>> fakeAttributes = new HashMap<>();
         List<String> objectAttrs = new ArrayList<>();
         objectAttrs.add("className");
+        // 适用所有Object对象，也就是所有对象中，如果遇到className，那么使用className实例化，并且作为key的value
         fakeAttributes.put(Object.class, objectAttrs);
         // Ignore attribute added by Eclipse for its internal tracking
+        // 设置StandardContext中的source为假属性，不进行设值
         List<String> contextAttrs = new ArrayList<>();
         contextAttrs.add("source");
         fakeAttributes.put(StandardContext.class, contextAttrs);
         digester.setFakeAttributes(fakeAttributes);
-        digester.setUseContextClassLoader(true);
 
+        // 设置digester的类加载器，使用Thread.currentThread().getContextClassLoader()
+        // 对于这里来说，设置的类加载器就是commonClassLoader
+        digester.setUseContextClassLoader(true);
         // Configure the actions we will be using
-        // 如果遇到”Server“元素起始符;则创建"org.apache.catalina.core.StandardServer"的一个实例对象，并压入堆栈;
-        // 如果"Server"元素的"className"属性存在，那么用这个属性的值所指定的class来创建实例对象，并压入堆栈。
+        // 如果遇到"Server"元素，则创建"org.apache.catalina.core.StandardServer"对象，并压入栈顶;
+        // 如果"Server"元素的"className"属性存在，那么用这个属性的值所指定的class来创建实例对象，并压入栈顶。
         digester.addObjectCreate("Server",
                                  "org.apache.catalina.core.StandardServer",
                                  "className");
-        // 从server.xml读取"Server"元素的所有{属性:值}配对,用对应的Setter方法将属性值设置到堆栈顶层元素(Server)。
+        // 从server.xml读取"Server"元素的所有{属性:值}配对,用对应的Setter方法将属性值设置到当前栈顶元素(Server)。
         digester.addSetProperties("Server");
-        // 遇到"Server"结束符时，调用“次顶层元素(Catalina)”的"setServer"方法，
+
+        // 调用次栈顶元素的setServer方法，参数是栈顶元素对象，这里也就是Server节点对应的对象，类型org.apache.catalina.Server
+        // 在上面的load方法中有个digester.push(this)，this(Catalina)对象就是栈顶了，也就是这里会调用Catalina.setServer()
+        // todo 对于tomcat中的rule执行顺序问题，rule存放在一个list中，start()方法按rule添加的顺序执行，而end()方法按倒序执行
+        // 所以addSetNext添加的规则会先执行，然后在执行addObjectCreate添加的规则，addObjectCreate对应的规则中，会pop出对象
+        // 这个方法其实也可以简单的理解为，调用父节点的相应方法将自己注入
         digester.addSetNext("Server",
                             "setServer",
                             "org.apache.catalina.Server");
 
+        // Server节点下的GlobalNamingResources节点，创建一个NamingResource对象
         digester.addObjectCreate("Server/GlobalNamingResources",
                                  "org.apache.catalina.deploy.NamingResourcesImpl");
         digester.addSetProperties("Server/GlobalNamingResources");
@@ -311,14 +327,17 @@ public class Catalina {
                             "setGlobalNamingResources",
                             "org.apache.catalina.deploy.NamingResourcesImpl");
 
+        // Server下的Listener节点，如果存在className，那么就创建对应类型的对象
         digester.addObjectCreate("Server/Listener",
-                                 null, // MUST be specified in the element
+                                 null,
                                  "className");
         digester.addSetProperties("Server/Listener");
         digester.addSetNext("Server/Listener",
                             "addLifecycleListener",
                             "org.apache.catalina.LifecycleListener");
 
+
+        // Server下的Service节点
         digester.addObjectCreate("Server/Service",
                                  "org.apache.catalina.core.StandardService",
                                  "className");
@@ -327,6 +346,8 @@ public class Catalina {
                             "addService",
                             "org.apache.catalina.Service");
 
+
+        // Service节点下的Listener节点
         digester.addObjectCreate("Server/Service/Listener",
                                  null, // MUST be specified in the element
                                  "className");
@@ -335,7 +356,7 @@ public class Catalina {
                             "addLifecycleListener",
                             "org.apache.catalina.LifecycleListener");
 
-        //Executor
+        // Executor节点
         digester.addObjectCreate("Server/Service/Executor",
                          "org.apache.catalina.core.StandardThreadExecutor",
                          "className");
@@ -345,9 +366,11 @@ public class Catalina {
                             "addExecutor",
                             "org.apache.catalina.Executor");
 
-
+        // 给Connector添加规则，就是当遇到Connector的时候，会调用ConnectorCreateRule里面定义的规则
+        // 跟上面的作用是一样的，只不过该节点的规则比较多，就创建一个规则类
         digester.addRule("Server/Service/Connector",
                          new ConnectorCreateRule());
+        // 属性过滤，排除掉executor以及sslImplementationName
         digester.addRule("Server/Service/Connector",
                          new SetAllPropertiesRule(new String[]{"executor", "sslImplementationName"}));
         digester.addSetNext("Server/Service/Connector",
@@ -400,6 +423,7 @@ public class Catalina {
                             "org.apache.coyote.UpgradeProtocol");
 
         // Add RuleSets for nested elements
+        // 为嵌套元素设置规则集 todo 和上面其实也差不多，实例化标签，属性注入，设置父类，只不过可能规则太多了，设置规则集方便一点，有的地方还可以复用
         digester.addRuleSet(new NamingRuleSet("Server/GlobalNamingResources/"));
         digester.addRuleSet(new EngineRuleSet("Server/Service/"));
         digester.addRuleSet(new HostRuleSet("Server/Service/Engine/"));
@@ -408,6 +432,7 @@ public class Catalina {
         digester.addRuleSet(new NamingRuleSet("Server/Service/Engine/Host/Context/"));
 
         // When the 'engine' is found, set the parentClassLoader.
+        // 如果配置中有engine标签，那么为Engine设置类加载器commonLoader
         digester.addRule("Server/Service/Engine",
                          new SetParentClassLoaderRule(parentClassLoader));
         addClusterRuleSet(digester, "Server/Service/Engine/Cluster/");
@@ -547,6 +572,8 @@ public class Catalina {
         initNaming();
 
         // Create and execute our Digester
+        // 创建Digester对象，用来解析web.xml文件
+        // 同时设置了许多解析规则
         Digester digester = createStartDigester();
 
         InputSource inputSource = null;
@@ -554,6 +581,7 @@ public class Catalina {
         File file = null;
         try {
             try {
+                // conf/server.xml文件
                 file = configFile();
                 inputStream = new FileInputStream(file);
                 inputSource = new InputSource(file.toURI().toURL().toString());
@@ -611,7 +639,9 @@ public class Catalina {
 
             try {
                 inputSource.setByteStream(inputStream);
+                // 将catalina对象本身压入digester栈栈顶，作为root对象
                 digester.push(this);
+                // 正式开始解析server.xml文件，解析的过程中，会创建许多的对象
                 digester.parse(inputSource);
             } catch (SAXParseException spe) {
                 log.warn("Catalina.start using " + getConfigFile() + ": " +
@@ -630,16 +660,21 @@ public class Catalina {
                 }
             }
         }
-
+        // 与server进行双向关连，解析的时候，已经调用了catalina.setServer()
         getServer().setCatalina(this);
+        // 设置catalinaHome
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
+        // 设置catalinaBase
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
         // Stream redirection
+        // 用自定义PrintStream替换System.out和System.err
         initStreams();
 
         // Start the new server
         try {
+            // server初始化
+            // server.init()--->service.init()--->engine.init()--->host.init()->connector.init()
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
@@ -677,6 +712,8 @@ public class Catalina {
     public void start() {
 
         if (getServer() == null) {
+            // 加载server对象，根据server.xml文件
+            // 同时调用了server.init()
             load();
         }
 
@@ -689,6 +726,7 @@ public class Catalina {
 
         // Start the new server
         try {
+            // 启动server
             getServer().start();
         } catch (LifecycleException e) {
             log.fatal(sm.getString("catalina.serverStartFail"), e);

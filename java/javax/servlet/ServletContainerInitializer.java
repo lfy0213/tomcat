@@ -33,6 +33,13 @@ import java.util.Set;
  * types via the {@link javax.servlet.annotation.HandlesTypes} annotation which
  * is added to the class.
  *
+ * 在Web容器启动时为让第三方组件做一些初始化工作，例如注册Servlet或者Filters等
+ * 当框架要使用ServletContainerInitializer时，就必须在对应的Jar包的META-INF/services目录中创建一个名为javax.servlet.ServletContainerInitializer的文件。
+ * 文件内容指定具体的ServletContainerInitializer实现类，当Web容器启动时，就会运行这个初始化器做一些组件内的初始化工作。
+ *
+ * 在tomcat中，主要由ContextConfig实现该规范对应的功能
+ * onStartup方法中的第一个参数，由具体的ServletContainerInitializer类上的@HandlesTypes注解中的参数决定
+ * 比如@HandlesTypes{Filter.class,HttpServlet.class}，那么就会将这两个类注入
  * @since Servlet 3.0
  */
 public interface ServletContainerInitializer {

@@ -19,6 +19,10 @@
      define subcomponents such as "Valves" at this level.
      Documentation at /docs/config/server.html
  -->
+<!--
+    Tomcat核心配置文件，用于配置tomcat中的一些组件，比如connector，engine，处理请求的虚拟主机host等等
+    Tomcat就是根据该配置文件创建服务器实例
+-->
 <Server port="8005" shutdown="SHUTDOWN">
   <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
   <!-- Security listener. Documentation at /docs/config/listeners.html

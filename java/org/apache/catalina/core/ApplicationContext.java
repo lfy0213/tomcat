@@ -85,6 +85,10 @@ import org.apache.tomcat.util.res.StringManager;
  * a web application's execution environment.  An instance of this class is
  * associated with each instance of <code>StandardContext</code>.
  *
+ *
+ * servletContext在tomcat中的实现，ApplicationContext继承自ServletContext
+ * servletContext的主要作用是表示某个Web应用的运行环境
+ * 总的来说，ApplicationContext就是为了满足Servlet标准的ServletContext接口而实现的一个类，它按Servlet的规范要求提供了各种实现方法。
  * @author Craig R. McClanahan
  * @author Remy Maucherat
  */
@@ -133,6 +137,7 @@ public class ApplicationContext implements org.apache.catalina.servlet4preview.S
 
     /**
      * The context attributes for this context.
+     * servletContext全局属性存储空间
      */
     protected Map<String,Object> attributes = new ConcurrentHashMap<>();
 
@@ -169,6 +174,7 @@ public class ApplicationContext implements org.apache.catalina.servlet4preview.S
 
     /**
      * The facade around this object.
+     * 当前对象的facade类，参考facada设计模式
      */
     private final ServletContext facade = new ApplicationContextFacade(this);
 

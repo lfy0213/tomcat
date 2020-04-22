@@ -113,6 +113,7 @@ public class ObjectCreateRule extends Rule {
         }
 
         // Instantiate the new object and push it on the context stack
+        // 加载对应的类，创建实例，压入栈顶
         Class<?> clazz = digester.getClassLoader().loadClass(realClassName);
         Object instance = clazz.getConstructor().newInstance();
         digester.push(instance);
@@ -130,7 +131,7 @@ public class ObjectCreateRule extends Rule {
      */
     @Override
     public void end(String namespace, String name) throws Exception {
-
+        // 弹出栈顶对象
         Object top = digester.pop();
         if (digester.log.isDebugEnabled()) {
             digester.log.debug("[ObjectCreateRule]{" + digester.match +

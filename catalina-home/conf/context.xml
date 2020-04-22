@@ -16,6 +16,7 @@
   limitations under the License.
 -->
 <!-- The contents of this file will be loaded for each web application -->
+<!--定义所有web应用均需要加载的Context配置，如果web应用指定了自己的context.xml，如果定义了相同的属性，那么会覆盖本配置-->
 <Context>
 
     <!-- Default set of monitored resources. If one of these changes, the    -->

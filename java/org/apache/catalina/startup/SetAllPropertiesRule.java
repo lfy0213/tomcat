@@ -62,6 +62,7 @@ public class SetAllPropertiesRule extends Rule {
                 name = attributes.getQName(i);
             }
             String value = attributes.getValue(i);
+            // 设置属性，排除掉excludes中设置的属性名，以及
             if ( !excludes.containsKey(name)) {
                 if (!digester.isFakeAttribute(digester.peek(), name)
                         && !IntrospectionUtils.setProperty(digester.peek(), name, value)

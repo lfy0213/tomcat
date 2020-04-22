@@ -193,6 +193,8 @@ public class StandardContext extends ContainerBase
 
     /**
      * Lifecycle provider.
+     * 主要的作用就是实现对Context容器中监听器、过滤器以及Servlet等实例的管理
+     * 包括根据监听器Class对其进行实例化，对它们的Class的注解进行解析并处理，对它们的Class实例化的访问权限的限制，销毁前统一调用preDestroy方法等。
      */
     private InstanceManager instanceManager = null;
 
@@ -292,6 +294,7 @@ public class StandardContext extends ContainerBase
 
     /**
      * The ServletContext implementation associated with this Context.
+     * ServletContext在tomcat中的实现
      */
     protected ApplicationContext context = null;
 
@@ -529,6 +532,7 @@ public class StandardContext extends ContainerBase
     /**
      * The servlet mappings for this web application, keyed by
      * matching pattern.
+     * servlet映射，路径--->servletName
      */
     private HashMap<String, String> servletMappings = new HashMap<>();
 
@@ -3215,9 +3219,12 @@ public class StandardContext extends ContainerBase
 
         // Add this mapping to our registered set
         synchronized (servletMappingsLock) {
+            // 根据路径去mapping中查找servlet
             String name2 = servletMappings.get(adjustedPattern);
             if (name2 != null) {
                 // Don't allow more than one servlet on the same pattern
+                // 如果此路径已经被映射到servlet上了，那么移除
+                // tomcat不允许同一个路径匹配多个servlet，不过可以一个servlet被多个路径匹配
                 Wrapper wrapper = (Wrapper) findChild(name2);
                 wrapper.removeMapping(adjustedPattern);
             }
@@ -3806,6 +3813,7 @@ public class StandardContext extends ContainerBase
     public synchronized void reload() {
 
         // Validate our current component state
+        // 验证当前组件状态
         if (!getState().isAvailable())
             throw new IllegalStateException
                 (sm.getString("standardContext.notStarted", getName()));
@@ -3815,9 +3823,11 @@ public class StandardContext extends ContainerBase
                     getName()));
 
         // Stop accepting requests temporarily.
+        // 暂停接收请求
         setPaused(true);
 
         try {
+            // 停止当前的context
             stop();
         } catch (LifecycleException e) {
             log.error(
@@ -3825,6 +3835,7 @@ public class StandardContext extends ContainerBase
         }
 
         try {
+            // 启动新的context
             start();
         } catch (LifecycleException e) {
             log.error(
@@ -4492,6 +4503,9 @@ public class StandardContext extends ContainerBase
 
     /**
      * A helper class to manage the filter mappings in a Context.
+     *
+     * 保存过滤器映射关系，它对应Web部署描述符配置的filter-mapping元素
+     * 它其实就是一个Map数据结构对象，将web.xml文件中filter-mapping的子元素filter-name和url-pattern对应的值保存起来，方便后面进行URL匹配。
      */
     private static final class ContextFilterMaps {
         private final Object lock = new Object();
@@ -5130,7 +5144,7 @@ public class StandardContext extends ContainerBase
                     context.setAttribute(Globals.CREDENTIAL_HANDLER, safeHandler);
                 }
 
-                // Notify our interested LifecycleListeners
+                // Notify our interested LifecycleListeners 触发configure_start事件，--->ContextConfig
                 fireLifecycleEvent(Lifecycle.CONFIGURE_START_EVENT, null);
 
                 // Start our child containers, if not already started
@@ -5190,6 +5204,7 @@ public class StandardContext extends ContainerBase
 
             // We put the resources into the servlet context
             if (ok)
+                // 将资源放入servletContext中
                 getServletContext().setAttribute
                     (Globals.RESOURCES_ATTR, getResources());
 
@@ -5219,6 +5234,9 @@ public class StandardContext extends ContainerBase
             mergeParameters();
 
             // Call ServletContainerInitializers
+            /**
+             * todo 调用ServletContainerInitializers.onStartUp()方法
+             */
             for (Map.Entry<ServletContainerInitializer, Set<Class<?>>> entry :
                 initializers.entrySet()) {
                 try {
@@ -5232,6 +5250,9 @@ public class StandardContext extends ContainerBase
             }
 
             // Configure and call application event listeners
+            /**
+             * todo 会调用javax.servlet.ServletContextListener#contextInitialized(javax.servlet.ServletContextEvent)
+             */
             if (ok) {
                 if (!listenerStart()) {
                     log.error(sm.getString("standardContext.listenerFail"));
@@ -5601,7 +5622,9 @@ public class StandardContext extends ContainerBase
 
         if (!getState().isAvailable())
             return;
-
+        /**
+         * 处理loader
+         */
         Loader loader = getLoader();
         if (loader != null) {
             try {

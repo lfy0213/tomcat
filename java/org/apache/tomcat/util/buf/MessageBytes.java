@@ -33,6 +33,9 @@ import java.util.Locale;
  * @author dac@eng.sun.com
  * @author James Todd [gonzo@eng.sun.com]
  * @author Costin Manolache
+ *
+ * tomcat不会一开始就将http字节流反序列成String文本的形式，而是当需要用到的时候才会去序列号
+ * 这个类的作用就是存放http ascii字节流
  */
 public final class MessageBytes implements Cloneable, Serializable {
     private static final long serialVersionUID = 1L;

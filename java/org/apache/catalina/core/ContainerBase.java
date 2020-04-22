@@ -124,6 +124,7 @@ import org.apache.tomcat.util.res.StringManager;
  * Subclasses that fire additional events should document them in the
  * class comments of the implementation class.
  *
+ * 定义了容器的一些基本行为
  * @author Craig R. McClanahan
  */
 public abstract class ContainerBase extends LifecycleMBeanBase
@@ -191,6 +192,9 @@ public abstract class ContainerBase extends LifecycleMBeanBase
 
     /**
      * The cluster with which this Container is associated.
+     *
+     * 当前容器关连的集群
+     * 只有host和engine容器这里才会有值
      */
     protected Cluster cluster = null;
     private final ReadWriteLock clusterLock = new ReentrantReadWriteLock();
@@ -274,6 +278,11 @@ public abstract class ContainerBase extends LifecycleMBeanBase
     /**
      * The number of threads available to process start and stop events for any
      * children associated with this container.
+     *
+     * 子容器启动和停止线程池，支持以异步的方式并行启动和停止子容器，加快启动速度
+     *
+     * 线程数默认为1，且在无应用部署的时候，过10s会自动销毁，不用占用资源
+     * 如果想加快启动速度，可以将这个值调大一点
      */
     private int startStopThreads = 1;
     protected ThreadPoolExecutor startStopExecutor;
@@ -747,10 +756,13 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         // Start child
         // Don't do this inside sync block - start can be a slow process and
         // locking the children object can cause problems elsewhere
+        // 如果当前组件可用(也就是当前组件处于STARTING，STARTED，STOPPING_PREP这三个状态之一)或者组件处于STARTING_PREP
+        // 并且设置了添加子容器时自动启动子容器startChildren，这个值默认是true
         try {
             if ((getState().isAvailable() ||
                     LifecycleState.STARTING_PREP.equals(getState())) &&
                     startChildren) {
+                // 启动子容器
                 child.start();
             }
         } catch (LifecycleException e) {
@@ -892,7 +904,10 @@ public abstract class ContainerBase extends LifecycleMBeanBase
 
     }
 
-
+    /**
+     * 标准的初始化流程，engine初始化会打日志，host初始化直接走默认的该方法
+     * @throws LifecycleException
+     */
     @Override
     protected void initInternal() throws LifecycleException {
         BlockingQueue<Runnable> startStopQueue = new LinkedBlockingQueue<>();
@@ -912,6 +927,17 @@ public abstract class ContainerBase extends LifecycleMBeanBase
      *
      * @exception LifecycleException if this component detects a fatal error
      *  that prevents this component from being used
+     *
+     *  标准容器启动流程，启动当前容器可能拥有的一些组件，再启动子容器
+     *  子类可以覆盖扩展该方法
+     *
+     *  Engine容器：在执行通用流程之前，会输出一条日志
+     *
+     *  Host容器：在执行通用流程之前，会添加一个org.apache.catalina.valves.ErrorReportValve到pipeline中
+     *
+     *  Context容器：完全走自定义的逻辑，{@link org.apache.catalina.core.StandardContext#startInternal()}
+     *
+     *  Wrapper容器：在执行通用流程之前，会发送一条通知
      */
     @Override
     protected synchronized void startInternal() throws LifecycleException {
@@ -919,16 +945,19 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         // Start our subordinate components, if any
         logger = null;
         getLogger();
+        // 集群启动
         Cluster cluster = getClusterInternal();
         if (cluster instanceof Lifecycle) {
             ((Lifecycle) cluster).start();
         }
+        // realm
         Realm realm = getRealmInternal();
         if (realm instanceof Lifecycle) {
             ((Lifecycle) realm).start();
         }
 
         // Start our child containers, if any
+        // 如果有子容器的话，启动子容器
         Container children[] = findChildren();
         List<Future<Void>> results = new ArrayList<>();
         for (int i = 0; i < children.length; i++) {
@@ -955,14 +984,16 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start the Valves in our pipeline (including the basic), if any
+        // 启动容器的pipeline
         if (pipeline instanceof Lifecycle) {
             ((Lifecycle) pipeline).start();
         }
 
-
+        // 设置组件状态，启动中
         setState(LifecycleState.STARTING);
 
         // Start our thread
+        // 启动一根后台线程
         threadStart();
     }
 
@@ -1134,13 +1165,16 @@ public abstract class ContainerBase extends LifecycleMBeanBase
      * Execute a periodic task, such as reloading, etc. This method will be
      * invoked inside the classloading context of this container. Unexpected
      * throwables will be caught and logged.
+     *
+     * 这个方法只有Context和wrapper重写了
+     * engine和host走的都是当前方法，默认逻辑
      */
     @Override
     public void backgroundProcess() {
 
         if (!getState().isAvailable())
             return;
-
+        // 处理集群
         Cluster cluster = getClusterInternal();
         if (cluster != null) {
             try {
@@ -1150,6 +1184,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
                         cluster), e);
             }
         }
+        // 处理realm
         Realm realm = getRealmInternal();
         if (realm != null) {
             try {
@@ -1158,6 +1193,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
                 log.warn(sm.getString("containerBase.backgroundProcess.realm", realm), e);
             }
         }
+        // 处理pipeline中的所有valve
         Valve current = pipeline.getFirst();
         while (current != null) {
             try {
@@ -1167,6 +1203,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
             }
             current = current.getNext();
         }
+        // 触发周期性事件，也意味着这个事件，在tomcat中会每10s就触发一次
         fireLifecycleEvent(Lifecycle.PERIODIC_EVENT, null);
     }
 
@@ -1344,6 +1381,8 @@ public abstract class ContainerBase extends LifecycleMBeanBase
     /**
      * Private thread class to invoke the backgroundProcess method
      * of this container and its children after a fixed delay.
+     *
+     * 容器后台处理器
      */
     protected class ContainerBackgroundProcessor implements Runnable {
 
@@ -1356,7 +1395,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
             try {
                 while (!threadDone) {
                     try {
-                        // 10s
+                        // 10s处理一次
                         Thread.sleep(backgroundProcessorDelay * 1000L);
                     } catch (InterruptedException e) {
                         // Ignore
@@ -1375,6 +1414,11 @@ public abstract class ContainerBase extends LifecycleMBeanBase
             }
         }
 
+        /**
+         * 递归函数，从engine容器开始，会一直到所有的wrapper
+         * 挨个执行backgroundProcess()函数，处理当前容器的一些后台事情
+         * @param container
+         */
         protected void processChildren(Container container) {
             ClassLoader originalClassLoader = null;
 
@@ -1388,6 +1432,7 @@ public abstract class ContainerBase extends LifecycleMBeanBase
 
                     // Ensure background processing for Contexts and Wrappers
                     // is performed under the web app's class loader
+                    // 确保在处理Context容器和wrapper容器时，线程绑定的类加载器时webappClassLoader
                     originalClassLoader = ((Context) container).bind(false, null);
                 }
                 container.backgroundProcess();

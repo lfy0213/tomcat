@@ -100,6 +100,14 @@ public class DefaultInstanceManager implements InstanceManager {
 
     private final Context context;
     private final Map<String, Map<String, String>> injectionMap;
+    /**
+     * 有两个类加载器，一个是Web应用类加载器，一个是Tomcat容器类加载器
+     * Tomcat容器类加载器是Web应用类加载器的父类加载器，且Tomcat容器类加载器在Tomcat的整个生命周期中都存在
+     * 而Web应用类加载器则不同，它可能在重启后则被丢弃，最终被GC回收。
+     *
+     * 如果实例化的Class是否属于org.apache.catalina包下的类，如果属于则使用Tomcat容器类加载器加载，这个类会在Tomcat的整个生命周期中存在内存中
+     * 否则会使用Web类加载器加载。
+     */
     protected final ClassLoader classLoader;
     protected final ClassLoader containerClassLoader;
     protected final boolean privileged;

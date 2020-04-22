@@ -56,6 +56,13 @@ import org.apache.tomcat.util.res.StringManager;
  * these Resources will be consulted first to locate the class.  If it
  * is not present, the system class loader will be used instead.
  *
+ * Web应用载入器
+ * 每个Web应用都有各自的Class类和Jar包，一般来说，在Tomcat启动时要准备好相应的类加载器，包括加载策略及Class文件的查找，方便后面对Web应用实例化Servlet对象时通过类加载器加载相关类。
+ * 因为每个Web应用不仅要达到资源的互相隔离，还要能支持重加载，所以这里需要为每个Web应用安排不同的类加载器对象加载，重加载时可直接将旧的类加载器对象丢弃而使用新的。
+ *
+ * WebappLoader它能检测是否有Web项目的Class被更改，然后自动重加载。
+ * 每个Web应用对应一个WebappLoader，每个WebappLoader互相隔离，各自包含的类互相不可见。
+ *
  * @author Craig R. McClanahan
  * @author Remy Maucherat
  */
@@ -90,6 +97,10 @@ public class WebappLoader extends LifecycleMBeanBase
 
     /**
      * The class loader being managed by this Loader component.
+     *
+     * WebappLoader的核心工作其实交给了这个WebappClassLoader，它才是真正完成类加载工作的加载器，它是一个自定义的类加载器
+     * WebappClassLoader继承了URLClassLoader，只需要把/WEB-INF/lib和/WEB-INF/classes目录下的类和Jar包以URL形式添加到URLClassLoader中即可
+     * 后面就可以用该类加载器对类进行加载。
      */
     private WebappClassLoaderBase classLoader = null;
 
@@ -284,16 +295,18 @@ public class WebappLoader extends LifecycleMBeanBase
     @Override
     public void backgroundProcess() {
         // 如果开启了自动部署reloadable=true，默认是开启的
-        // 并且当前文件有修改的痕迹
+        // 并且WEB-INF/lib下的jar包有修改(数量变化，jar包修改)
         if (reloadable && modified()) {
             try {
+                // 设置线程的ClassLoader
                 Thread.currentThread().setContextClassLoader
                     (WebappLoader.class.getClassLoader());
                 if (context != null) {
-                    // 进行热部署
+                    // 进行重加载
                     context.reload();
                 }
             } finally {
+                // 将线程的ClassLoader设置为重加载之后的
                 if (context != null && context.getLoader() != null) {
                     Thread.currentThread().setContextClassLoader
                         (context.getLoader().getClassLoader());
@@ -466,7 +479,7 @@ public class WebappLoader extends LifecycleMBeanBase
             }
         }
 
-
+        // 将classLoader置为null
         classLoader = null;
     }
 

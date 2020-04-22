@@ -18,6 +18,19 @@ package org.apache.catalina.loader;
 
 import org.apache.catalina.LifecycleException;
 
+/**
+ * WebappClassLoader并没有遵循双亲委派机制，而是按自己的策略顺序加载类。根据委托标识，加载分为两种方式。
+ *
+ * 1 当委托标识delegate为false时，WebappClassLoader类加载器首先先尝试从本地缓存中查找加载该类
+ * 然后用System类加载器尝试加载类，接着由自己尝试加载类，最后才由父类加载（Common）器尝试加载。
+ * 所以此时它搜索的目录顺序是<JAVA_HOME>/jre/lib → <JAVA_HOME>/jre/lib/ext → CLASSPATH → /WEB-INF/classes → /WEB-INF/lib → $CATALINA_BASE/lib和$CATALINA_HOME/lib。
+ *
+ * 2 当委托标识delegate为true时，WebappClassLoader类加载器首先先尝试从本地缓存中查找加载该类
+ * 然后用System类加载器尝试加载类，接着由父类加载器（Common）尝试加载类，最后才由自己尝试加载。
+ * 所以此时它的搜索的目录顺序是<JAVA_HOME>/jre/lib → <JAVA_HOME>/jre/lib/ext → CLASSPATH → $CATALINA_BASE/lib和$CATALINA_HOME/lib → /WEB-INF/classes→/WEB-INF/lib。
+ *
+ * 对于重加载的实现，只需要重新实例化一个WebappClassLoader对象并把原来WebappLoader中旧的置换掉即可完成重加载功能，置换掉的将被GC回收。
+ */
 public class WebappClassLoader extends WebappClassLoaderBase {
 
     public WebappClassLoader() {

@@ -58,13 +58,21 @@ public class ConnectorCreateRule extends Rule {
             throws Exception {
         Service svc = (Service)digester.peek();
         Executor ex = null;
+        // 如果设置了connector标签中的executor属性值
         if ( attributes.getValue("executor")!=null ) {
+            // 根据value值去service中的全局executor找
             ex = svc.getExecutor(attributes.getValue("executor"));
         }
+        // 根据对应的协议创建Connector
         Connector con = new Connector(attributes.getValue("protocol"));
+        // 对于Connector来说，如果设置了executor，等于是使用<service>子标签<Executor>中配置的线程池
+        // 这个线程池可以被多个Connector共享使用
+        // 如果在7.0以前Connector是使用bio的话，一般都会这么设置，7.0以后使用nio的话一般就不设置了
+        // 可以看看这个版本中的server.xml文件，默认已经不推荐使用了
         if (ex != null) {
             setExecutor(con, ex);
         }
+        // 设置ssl实现，默认是sslEngine
         String sslImplementationName = attributes.getValue("sslImplementationName");
         if (sslImplementationName != null) {
             setSSLImplementationName(con, sslImplementationName);
@@ -73,8 +81,10 @@ public class ConnectorCreateRule extends Rule {
     }
 
     private static void setExecutor(Connector con, Executor ex) throws Exception {
+        // 获取setExecutor方法
         Method m = IntrospectionUtils.findMethod(con.getProtocolHandler().getClass(),"setExecutor",new Class[] {java.util.concurrent.Executor.class});
         if (m!=null) {
+            // 注入Executor
             m.invoke(con.getProtocolHandler(), new Object[] {ex});
         }else {
             log.warn(sm.getString("connector.noSetExecutor", con));

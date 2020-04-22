@@ -312,10 +312,12 @@ public class HostConfig implements LifecycleListener {
         // Process the event that has occurred
         // 处理对应的事件
         if (event.getType().equals(Lifecycle.PERIODIC_EVENT)) {
+            // 周期性事件处理
             check();
         } else if (event.getType().equals(Lifecycle.BEFORE_START_EVENT)) {
             beforeStart();
         } else if (event.getType().equals(Lifecycle.START_EVENT)) {
+            // 响应host启动事件
             start();
         } else if (event.getType().equals(Lifecycle.STOP_EVENT)) {
             stop();
@@ -385,17 +387,22 @@ public class HostConfig implements LifecycleListener {
 
     /**
      * Create the digester which will be used to parse context config files.
+     *
+     * 创建Digester对象，同时设置解析规则
      * @param contextClassName The class which will be used to create the
      *  context instance
      * @return the digester
      */
     protected static Digester createDigester(String contextClassName) {
         Digester digester = new Digester();
+        // 设置为false表示解析xml时不需要进行DTD的规则校验
         digester.setValidating(false);
         // Add object creation rule
+        // 当遇见Context标签时，创建contextClassName对象，并压入栈顶
         digester.addObjectCreate("Context", contextClassName, "className");
         // Set the properties on that object (it doesn't matter if extra
         // properties are set)
+        // 给栈顶的对象设置相应节点的属性，调用默认的Setter Getter
         digester.addSetProperties("Context");
         return (digester);
     }
@@ -427,15 +434,20 @@ public class HostConfig implements LifecycleListener {
      * in our "application root" directory.
      */
     protected void deployApps() {
-
+        // 获取AppBaseFile，webapps目录
         File appBase = host.getAppBaseFile();
+        // 获取ConfigBaseFile，$CATALINA_HOME/conf/<Engine名称>/<Host名称>目录
         File configBase = host.getConfigBaseFile();
+        // 忽略掉不需要部署的应用，在server.xml中的<Host>节点可以配置规则
         String[] filteredAppPaths = filterAppPaths(appBase.list());
         // Deploy XML descriptors from configBase
+        // 根据configBase中的Context描述文件部署
         deployDescriptors(configBase, configBase.list());
         // Deploy WARs
+        // webapps中的war包部署
         deployWARs(appBase, filteredAppPaths);
         // Deploy expanded folders
+        // webapps中的目录(应用的存在形式可以是war包，也可以是整个目录)部署
         deployDirectories(appBase, filteredAppPaths);
 
     }
@@ -512,6 +524,10 @@ public class HostConfig implements LifecycleListener {
 
     /**
      * Deploy XML context descriptors.
+     *
+     * context.xml文件方式部署
+     *
+     *
      * @param configBase The config base
      * @param files The XML descriptors which should be deployed
      */
@@ -519,7 +535,7 @@ public class HostConfig implements LifecycleListener {
 
         if (files == null)
             return;
-
+        // 部署线程池
         ExecutorService es = host.getStartStopExecutor();
         List<Future<?>> results = new ArrayList<>();
 
@@ -527,11 +543,12 @@ public class HostConfig implements LifecycleListener {
             File contextXml = new File(configBase, files[i]);
 
             if (files[i].toLowerCase(Locale.ENGLISH).endsWith(".xml")) {
+                // 获取context path和context name等一些基本信息，封装成ContextName
                 ContextName cn = new ContextName(files[i], true);
-
+                // 如果存在同名应用，并且已经部署，那么跳过
                 if (isServiced(cn.getName()) || deploymentExists(cn.getName()))
                     continue;
-
+                // 交给部署线程进行部署
                 results.add(
                         es.submit(new DeployDescriptor(this, cn, contextXml)));
             }
@@ -539,6 +556,7 @@ public class HostConfig implements LifecycleListener {
 
         for (Future<?> result : results) {
             try {
+                // 阻塞获取部署结果
                 result.get();
             } catch (Exception e) {
                 log.error(sm.getString(
@@ -549,6 +567,11 @@ public class HostConfig implements LifecycleListener {
 
 
     /**
+     *
+     * Tomcat支持通过一个独立的Context描述文件来配置并启动Web应用，配置方式同server.xml中的<Context>元素。
+     * 该文件的放置文件由Host的xmlBase属性指定
+     * 如果未指定，则默认为$CATALINA_HOME/conf/<Engine名称>/<Host名称>
+     *
      * Deploy specified context descriptor.
      * @param cn The context name
      * @param contextXml The descriptor
@@ -571,10 +594,11 @@ public class HostConfig implements LifecycleListener {
         boolean isExternalWar = false;
         boolean isExternal = false;
         File expandedDocBase = null;
-
+        // 读取context.xml文件
         try (FileInputStream fis = new FileInputStream(contextXml)) {
             synchronized (digesterLock) {
                 try {
+                    // 使用Digester解析Context描述文件，创建Context实例。
                     context = (Context) digester.parse(fis);
                 } catch (Exception e) {
                     log.error(sm.getString(
@@ -587,16 +611,19 @@ public class HostConfig implements LifecycleListener {
                     }
                 }
             }
-
+            // 设置contextConfig生命周期监听器
             Class<?> clazz = Class.forName(host.getConfigClass());
             LifecycleListener listener = (LifecycleListener) clazz.getConstructor().newInstance();
             context.addLifecycleListener(listener);
-
+            // 设置context的一些属性，名字和路径等
+            // ps.名字和路径是解析Context描述文件的路径名字得来的，所以即使在context文件中配置了path，也不会生效
+            // 但是后续contextConfig监听器在响应AFTER_INIT_EVENT事件时，会再赋值一遍，但是会过滤掉path，name可以重新赋值
             context.setConfigFile(contextXml.toURI().toURL());
             context.setName(cn.getName());
             context.setPath(cn.getPath());
             context.setWebappVersion(cn.getVersion());
             // Add the associated docBase to the redeployed list if it's a WAR
+            // 将Context描述文件、Web应用目录及web.xml添加到守护资源，以便文件发生变更时（判断依据是修改时间），重新部署或者加载Web应用
             if (context.getDocBase() != null) {
                 File docBase = new File(context.getDocBase());
                 if (!docBase.isAbsolute()) {
@@ -621,7 +648,7 @@ public class HostConfig implements LifecycleListener {
                     context.setDocBase(null);
                 }
             }
-
+            // 通过Host的addChild方法将Context实例添加到Host中，该方法会判断Host是否启动，如果Host已经启动，Context直接启动。
             host.addChild(context);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -705,6 +732,7 @@ public class HostConfig implements LifecycleListener {
 
     /**
      * Deploy WAR files.
+     *
      * @param appBase The base path for applications
      * @param files The WARs to deploy
      */
@@ -723,14 +751,17 @@ public class HostConfig implements LifecycleListener {
             if (files[i].equalsIgnoreCase("WEB-INF"))
                 continue;
             File war = new File(appBase, files[i]);
+            // 如果文件后缀以war包结尾，并且invalidWars中不包含该war包
             if (files[i].toLowerCase(Locale.ENGLISH).endsWith(".war") &&
                     war.isFile() && !invalidWars.contains(files[i]) ) {
-
+                // 解析出context的name,path等属性
                 ContextName cn = new ContextName(files[i], true);
-
+                // 是否已经部署完毕，之前部署的正在运行，那么跳过这次部署
                 if (isServiced(cn.getName())) {
                     continue;
                 }
+                // 如果主机中之前部署过这个应用，存在已经解压过的Web目录，则不会进行部署
+                // 会走后边的目录部署
                 if (deploymentExists(cn.getName())) {
                     DeployedApplication app = deployed.get(cn.getName());
                     boolean unpackWAR = unpackWARs;
@@ -763,7 +794,7 @@ public class HostConfig implements LifecycleListener {
                     invalidWars.add(files[i]);
                     continue;
                 }
-
+                // 线程池执行
                 results.add(es.submit(new DeployWar(this, cn, war)));
             }
         }
@@ -817,16 +848,18 @@ public class HostConfig implements LifecycleListener {
 
     /**
      * Deploy packed WAR.
+     *
+     * WAR包部署和Web目录部署基本类似，只是由于WAR包是一个压缩文件，增加了部分针对压缩文件的处理。
      * @param cn The context name
      * @param war The WAR file
      */
     protected void deployWAR(ContextName cn, File war) {
-
+        // 获取war包中的xml文件，webapps/mywar/META-INF/context.xml
         File xml = new File(host.getAppBaseFile(),
                 cn.getBaseName() + "/" + Constants.ApplicationContextXml);
-
+        // 获取/META-INF/war-tracker目录
         File warTracker = new File(host.getAppBaseFile(), cn.getBaseName() + Constants.WarTracker);
-
+        // 查找war包中是否有context.xml
         boolean xmlInWar = false;
         try (JarFile jar = new JarFile(war)) {
             JarEntry entry = jar.getJarEntry(Constants.ApplicationContextXml);
@@ -843,15 +876,19 @@ public class HostConfig implements LifecycleListener {
         boolean useXml = false;
         // If the xml file exists then expandedDir must exists so no need to
         // test that here
+        // 如果context.xml文件存在,并且host设置了在部署war包的时候自动展开war包，那么就使用xml文件部署
+        // unpackWARs默认是true
         if (xml.exists() && unpackWARs &&
                 (!warTracker.exists() || warTracker.lastModified() == war.lastModified())) {
             useXml = true;
         }
 
         Context context = null;
+        // 拿到Host的deployXML属性，一般都是true
         boolean deployThisXML = isDeployThisXML(war, cn);
 
         try {
+            // 如果使用xml，并且不需要拷贝到$CATALINA_BASE/conf/engine/host目录，那么使用digester解析xml文件生成context实例
             if (deployThisXML && useXml && !copyXML) {
                 synchronized (digesterLock) {
                     try {
@@ -867,7 +904,9 @@ public class HostConfig implements LifecycleListener {
                         }
                     }
                 }
+                // 设置context关连的context.xml文件路径
                 context.setConfigFile(xml.toURI().toURL());
+                // 如果war包中存在xml文件，解析war包中的xml文件生成context实例
             } else if (deployThisXML && xmlInWar) {
                 synchronized (digesterLock) {
                     try (JarFile jar = new JarFile(war)) {
@@ -888,6 +927,7 @@ public class HostConfig implements LifecycleListener {
                                 UriUtil.buildJarUrl(war, Constants.ApplicationContextXml));
                     }
                 }
+                // 如果不使用xml，并且存在xml文件，那么打个error日志，部署失败
             } else if (!deployThisXML && xmlInWar) {
                 // Block deployment as META-INF/context.xml may contain security
                 // configuration necessary for a secure deployment.
@@ -895,6 +935,9 @@ public class HostConfig implements LifecycleListener {
                         cn.getPath(), Constants.ApplicationContextXml,
                         new File(host.getConfigBaseFile(), cn.getBaseName() + ".xml")));
             } else {
+                /**
+                 * 大部分默认情况下，都会走到这里，生成标准的StandardContext
+                 */
                 context = (Context) Class.forName(contextClass).getConstructor().newInstance();
             }
         } catch (Throwable t) {
@@ -906,7 +949,6 @@ public class HostConfig implements LifecycleListener {
                 context = new FailedContext();
             }
         }
-
         boolean copyThisXml = false;
         if (deployThisXML) {
             if (host instanceof StandardHost) {
@@ -917,7 +959,7 @@ public class HostConfig implements LifecycleListener {
             if (!copyThisXml && context instanceof StandardContext) {
                 copyThisXml = ((StandardContext) context).getCopyXML();
             }
-
+            // 如果war包中存在xml文件，并且需要拷贝，那么就拷贝到$CATALINA_BASE/conf/engine/host
             if (xmlInWar && copyThisXml) {
                 // Change location of XML file to config base
                 xml = new File(host.getConfigBaseFile(),
@@ -942,7 +984,7 @@ public class HostConfig implements LifecycleListener {
                 }
             }
         }
-
+        // 生成守护资源
         DeployedApplication deployedApp = new DeployedApplication(cn.getName(),
                 xml.exists() && deployThisXML && copyThisXml);
 
@@ -970,11 +1012,13 @@ public class HostConfig implements LifecycleListener {
                         Long.valueOf(0));
             }
 
-            // 给Context容器添加了ContextConfig监听器。而在Context的startInternal方法中，发送了监听事件
+            // 为context设置ContextConfig生命周期监听器
             Class<?> clazz = Class.forName(host.getConfigClass());
             LifecycleListener listener = (LifecycleListener) clazz.getConstructor().newInstance();
             context.addLifecycleListener(listener);
-
+            // 设置context name，path等属性
+            // 以mywar为例，name=/mywar , path=/mywar, version="", docBase=mywar.war
+            // name、path、webappVersion、docBase这4个属性都无法覆盖。
             context.setName(cn.getName());
             context.setPath(cn.getPath());
             context.setWebappVersion(cn.getVersion());
@@ -987,6 +1031,7 @@ public class HostConfig implements LifecycleListener {
         } finally {
             // If we're unpacking WARs, the docBase will be mutated after
             // starting the context
+            // 默认是true
             boolean unpackWAR = unpackWARs;
             if (unpackWAR && context instanceof StandardContext) {
                 unpackWAR = ((StandardContext) context).getUnpackWAR();
@@ -1063,6 +1108,15 @@ public class HostConfig implements LifecycleListener {
 
     /**
      * Deploy exploded webapp.
+     *
+     * 以目录形式进行部署
+     * 只需要将包含Web应用的所有资源文件（HTML、JS、CSS、JSP等）、Jar包、描述文件（WEB-INF/web.xml）的目录复制到Host指定的appBase目录即可完成部署。
+     *
+     * 如果某个应用不想部署，可以通过Host的deployIgnore属性进行忽略。不指定，所有目录均进行部署（deployApps方法中调用filterAppPaths方法完成）
+     *
+     * 该种部署方式下，Catalina同样支持通过配置文件来实例化Context（默认位于Web应用META-INF目录下，名字为context.xml）
+     *
+     * 我们可以在配置文件中对Context进行定制，但无法覆盖path、docBase这2个属性，它们由Web目录的路径及名称确定（所以此种部署方式无法自定义Web应用的的部署目录）
      * @param cn The context name
      * @param dir The path to the root folder of the weapp
      */
@@ -1079,18 +1133,30 @@ public class HostConfig implements LifecycleListener {
 
         Context context = null;
         File xml = new File(dir, Constants.ApplicationContextXml);
+        // 创建$CATALINA_HOME/conf/<Engine名称>/<Host名称>目录
         File xmlCopy =
                 new File(host.getConfigBaseFile(), cn.getBaseName() + ".xml");
 
-
         DeployedApplication deployedApp;
+        /**
+         * 默认情况
+         * copyThisXml为false：表示不会将描述文件复制到$CATALINA_HOME/conf/<Engine名称>/<Host名称>目录下，文件名与Web应用目录名相同。
+         * deployThisXML为true：表示可以通过Context描述文件部署，并且存在META-INF/context.xml文件，则使用Digester解析context.xml创建context实例。
+         *
+         * 总的来说
+         * 如果deployThisXML=true，如果有xml文件，那么可以部署，如果没有xml文件，那么部署失败
+         * 如果deployThisXML=false，如果有xml文件，那么失败，如果没有，那就生成标准的context
+         *
+         */
         boolean copyThisXml = isCopyXML();
         boolean deployThisXML = isDeployThisXML(dir, cn);
 
         try {
+            // 如果支持xml描述文件部署，并且存在context.xml文件
             if (deployThisXML && xml.exists()) {
                 synchronized (digesterLock) {
                     try {
+                        // 通过digester解析xml文件，生成context对象
                         context = (Context) digester.parse(xml);
                     } catch (Exception e) {
                         log.error(sm.getString(
@@ -1104,18 +1170,22 @@ public class HostConfig implements LifecycleListener {
                         }
                     }
                 }
-
+                // 如果不需要复制，并且context是标准的StandardContext，那么是否覆盖原来的context
+                // todo
                 if (copyThisXml == false && context instanceof StandardContext) {
                     // Host is using default value. Context may override it.
                     copyThisXml = ((StandardContext) context).getCopyXML();
                 }
-
+                // 设置context实例的xml描述文件路径
+                // 如果需要复制xml，那么将xml复制到$CATALINA_HOME/conf/<Engine名称>/<Host名称>目录下，在将复制后的路径设置到context
+                // 如果不需要复制，那么直接用原来的路径
                 if (copyThisXml) {
                     Files.copy(xml.toPath(), xmlCopy.toPath());
                     context.setConfigFile(xmlCopy.toURI().toURL());
                 } else {
                     context.setConfigFile(xml.toURI().toURL());
                 }
+                // 如果不支持xml方式部署，但是context.xml文件又存在，那么本次部署失败，创建一个FailedContext（Container的空模式，用于表示Context部署失败）
             } else if (!deployThisXML && xml.exists()) {
                 // Block deployment as META-INF/context.xml may contain security
                 // configuration necessary for a secure deployment.
@@ -1123,23 +1193,29 @@ public class HostConfig implements LifecycleListener {
                         cn.getPath(), xml, xmlCopy));
                 context = new FailedContext();
             } else {
+                // 如果不支持xml方式部署，并且xml也不存在，那么构建一个标准的StandardContext
                 context = (Context) Class.forName(contextClass).getConstructor().newInstance();
             }
 
+            // 为context设置contextConfig监听器
             Class<?> clazz = Class.forName(host.getConfigClass());
             LifecycleListener listener = (LifecycleListener) clazz.getConstructor().newInstance();
             context.addLifecycleListener(listener);
-
+            // 设置名字以及路径等信息
+            // 在此方式部署的时候，docBase和path是通过目录的路径等信息解析而来，所以无法自定义设置
             context.setName(cn.getName());
             context.setPath(cn.getPath());
             context.setWebappVersion(cn.getVersion());
             context.setDocBase(cn.getBaseName());
+            // 添加到host中
             host.addChild(context);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
             log.error(sm.getString("hostConfig.deployDir.error",
                     dir.getAbsolutePath()), t);
         } finally {
+            // 将Context描述文件、Web应用目录及web.xml添加到守护资源，以便文件发生变更时（判断依据是修改时间），重新部署或者加载Web应用
+            // 守护文件因deployXML和copyXML稍有不同
             deployedApp = new DeployedApplication(cn.getName(),
                     xml.exists() && deployThisXML && copyThisXml);
 
@@ -1265,6 +1341,13 @@ public class HostConfig implements LifecycleListener {
     /**
      * Check resources for redeployment and reloading.
      *
+     *
+     * 如果守护资源是目录，则仅更新守护资源列表中的上次修改时间。
+     *
+     * 如果Web应用存在Context描述文件（需要Context的copyXML为true）并且当前变更的是WAR包时，则先拿到Context的docBase。如果docBase不以.war结尾（即Context指向的是WAR解压目录），则先删除解压目录，然后重新加载，否则直接重新加载。更新守护资源。
+     *
+     * 其他情况下，直接卸载Web应用，并交由接下来的处理步骤重新部署Web应用。
+     *
      * @param app   The web application to check
      * @param skipFileModificationResolutionCheck
      *              When checking files for modification should the check that
@@ -1294,10 +1377,12 @@ public class HostConfig implements LifecycleListener {
                 if (resource.lastModified() != lastModified && (!host.getAutoDeploy() ||
                         resource.lastModified() < currentTimeWithResolutionOffset ||
                         skipFileModificationResolutionCheck)) {
+                    // 第一种情况，守护资源是Web应用目录，直接更新时间
                     if (resource.isDirectory()) {
                         // No action required for modified directory
                         app.redeployResources.put(resources[i],
                                 Long.valueOf(resource.lastModified()));
+                        //第二种，Web应用存在Context描述文件（需要Context的copyXML为true）并且当前变更的是WAR包时
                     } else if (app.hasDescriptor &&
                             resource.getName().toLowerCase(
                                     Locale.ENGLISH).endsWith(".war")) {
@@ -1307,6 +1392,7 @@ public class HostConfig implements LifecycleListener {
                         // expanded WAR (if any)
                         Context context = (Context) host.findChild(app.name);
                         String docBase = context.getDocBase();
+                        // 如果docBase不以war结尾，则先删除解压目录，然后再重新reload，在context启动前会解压war
                         if (!docBase.toLowerCase(Locale.ENGLISH).endsWith(".war")) {
                             // This is an expanded directory
                             File docBaseFile = new File(docBase);
@@ -1316,6 +1402,7 @@ public class HostConfig implements LifecycleListener {
                             }
                             reload(app, docBaseFile, resource.getAbsolutePath());
                         } else {
+                            // 直接reload
                             reload(app, null, null);
                         }
                         // Update times
@@ -1333,6 +1420,7 @@ public class HostConfig implements LifecycleListener {
                         }
                         return;
                     } else {
+                        // 第三种，其他情况，先卸载，再重新部署
                         // Everything else triggers a redeploy
                         // (just need to undeploy here, deploy will follow)
                         undeploy(app);
@@ -1358,6 +1446,7 @@ public class HostConfig implements LifecycleListener {
                 return;
             }
         }
+        // reloadResources维护的是web.xml文件，当该文件发生变化时，不需要重新部署应用，只需重新加载应用（reload，即先stop，然后start）
         resources = app.reloadResources.keySet().toArray(new String[0]);
         boolean update = false;
         for (int i = 0; i < resources.length; i++) {
@@ -1575,7 +1664,7 @@ public class HostConfig implements LifecycleListener {
             host.setDeployOnStartup(false);
             host.setAutoDeploy(false);
         }
-
+        // 如果host设置了在启动时，自动部署项目
         if (host.getDeployOnStartup())
             deployApps();
 
@@ -1608,11 +1697,12 @@ public class HostConfig implements LifecycleListener {
         // 这个条件对应这server.xml的Host配置的autoDeploy="true"
         if (host.getAutoDeploy()) {
             // Check for resources modification to trigger redeployment
+            // 所有的守护资源，应用在第一次部署完成之后，会创建一个DeployedApplication对象对webapp下的相关资源进行封装
             DeployedApplication[] apps =
                 deployed.values().toArray(new DeployedApplication[0]);
             for (int i = 0; i < apps.length; i++) {
                 if (!isServiced(apps[i].name))
-                    // 资源查找
+                    // 检测守护资源是否变更，如果有变更，那么卸载相关的webapp
                     checkResources(apps[i], false);
             }
 
@@ -1622,7 +1712,7 @@ public class HostConfig implements LifecycleListener {
             }
 
             // Hotdeploy applications
-            // 热部署
+            // 重新部署应用
             deployApps();
         }
     }

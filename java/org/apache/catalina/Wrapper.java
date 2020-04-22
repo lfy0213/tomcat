@@ -44,6 +44,8 @@ import javax.servlet.UnavailableException;
  * <code>addChild()</code> method should throw an
  * <code>IllegalArgumentException</code>.
  *
+ * Servlet的各种定义在Tomcat中就Wrapper的形式存在。
+ * Wrapper负责调用Servlet的doPost & doGet的逻辑
  * @author Craig R. McClanahan
  */
 public interface Wrapper extends Container {

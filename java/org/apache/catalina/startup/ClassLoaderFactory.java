@@ -146,6 +146,7 @@ public final class ClassLoaderFactory {
      *  <code>null</code> for the system class loader.
      * @return the new class loader
      *
+     * 如果传入的parent为null，那么会使用默认的父类加载器，即系统类加载器
      * @exception Exception if an error occurs constructing the class loader
      */
     public static ClassLoader createClassLoader(List<Repository> repositories,
@@ -157,7 +158,7 @@ public final class ClassLoaderFactory {
 
         // Construct the "class path" for this class loader
         Set<URL> set = new LinkedHashSet<>();
-
+        // 将repositories转化为URL[]数组的形式
         if (repositories != null) {
             for (Repository repository : repositories)  {
                 if (repository.getType() == RepositoryType.URL) {
@@ -223,7 +224,6 @@ public final class ClassLoaderFactory {
             for (int i = 0; i < array.length; i++) {
                 log.debug("  location " + i + " is " + array[i]);
             }
-
         return AccessController.doPrivileged(
                 new PrivilegedAction<URLClassLoader>() {
                     @Override
@@ -299,9 +299,21 @@ public final class ClassLoaderFactory {
 
 
     public enum RepositoryType {
+        /**
+         * 整个目录下的资源，包括jar，.class等其他类型资源
+         */
         DIR,
+        /**
+         * 整个目录下的所有的jar包，仅仅是．jar后缀的资源
+         */
         GLOB,
+        /**
+         * 单个jar包资源
+         */
         JAR,
+        /**
+         * URL上获取的jar包资源
+         */
         URL
     }
 

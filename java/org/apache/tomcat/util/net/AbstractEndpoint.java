@@ -434,7 +434,12 @@ public abstract class AbstractEndpoint<S> {
     }
     public int getAcceptorThreadPriority() { return acceptorThreadPriority; }
 
-
+    /**
+     * 最大连接数，默认是10000，可通过<Connector>节点的maxConnections属性修改
+     * 当超过这个数量时
+     * 对于操作系统来说，仍然会接收连接,直到操作系统的接收队列被塞满，可以通过<Connector>节点的acceptCount属性来控制接收队列长度，ServerSocket.bind()的时候传给操作系统
+     * 对于tomcat来说，只不过是acceptor线程会阻塞，serverSocket不会accept连接而已
+     */
     private int maxConnections = 10000;
     public void setMaxConnections(int maxCon) {
         this.maxConnections = maxCon;
@@ -534,6 +539,7 @@ public abstract class AbstractEndpoint<S> {
      * Allows the server developer to specify the acceptCount (backlog) that
      * should be used for server sockets. By default, this value
      * is 100.
+     * 当连接数超过maxConnections时，socket accept接收队列的长度，连接超过这个数量，则操作系统会拒绝连接
      */
     private int acceptCount = 100;
     public void setAcceptCount(int acceptCount) { if (acceptCount > 0) this.acceptCount = acceptCount; }
@@ -611,6 +617,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * SSL engine.
+     * 是否使用ssl
      */
     private boolean SSLEnabled = false;
     public boolean isSSLEnabled() { return SSLEnabled; }
@@ -652,6 +659,7 @@ public abstract class AbstractEndpoint<S> {
 
     /**
      * Maximum amount of worker threads.
+     * work线程池最大线程数，默认200，可覆盖
      */
     private int maxThreads = 200;
     public void setMaxThreads(int maxThreads) {
@@ -1056,6 +1064,7 @@ public abstract class AbstractEndpoint<S> {
             if (socketWrapper == null) {
                 return false;
             }
+            // 从对象池中获取SocketProcessor，如果没有，则创建一个新的
             SocketProcessorBase<S> sc = processorCache.pop();
             if (sc == null) {
                 sc = createSocketProcessor(socketWrapper, event);
@@ -1064,6 +1073,7 @@ public abstract class AbstractEndpoint<S> {
             }
             Executor executor = getExecutor();
             if (dispatch && executor != null) {
+                // 将SocketProcessor交给线程池处理
                 executor.execute(sc);
             } else {
                 sc.run();

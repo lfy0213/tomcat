@@ -29,6 +29,7 @@ import org.apache.tomcat.util.res.StringManager;
  * Representation of a filter definition for a web application, as represented
  * in a <code>&lt;filter&gt;</code> element in the deployment descriptor.
  *
+ * 描述过滤器的定义，它其实对应Web部署描述符配置的Filter元素
  * @author Craig R. McClanahan
  */
 public class FilterDef implements Serializable {

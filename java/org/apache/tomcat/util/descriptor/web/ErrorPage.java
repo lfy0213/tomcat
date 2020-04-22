@@ -25,6 +25,12 @@ import org.apache.tomcat.util.buf.UDecoder;
  * as represented in a <code>&lt;error-page&gt;</code> element in the
  * deployment descriptor.
  *
+ *
+ * 每个Context容器都拥有各自的错误页面对象，它用于定义在Web容器处理过程中出现问题后向客户端展示错误信息的页面，这也是Servlet规范中规定的内容
+ *
+ * 对错误页面的处理其实是在StandardHostValve阀门中，它调用对应Context容器对请求处理后，根据请求对象的响应码，判断是否需要返回对应的错误页面
+ * 同时它还根据处理过程中发生的异常寻找对应的错误页面，这样就实现了Servlet规范中错误页面的功能
+ *
  * @author Craig R. McClanahan
  */
 public class ErrorPage implements Serializable {

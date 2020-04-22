@@ -126,6 +126,7 @@ public class ApplicationContextFacade implements org.apache.catalina.servlet4pre
 
     /**
      * Wrapped application context.
+     * 门面封装的ApplicationContext
      */
     private final ApplicationContext context;
 

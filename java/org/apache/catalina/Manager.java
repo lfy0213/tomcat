@@ -35,6 +35,10 @@ import java.io.IOException;
  *     <code>start()</code> on the same <code>Manager</code> instance.
  * </ul>
  *
+ * 会话管理器，管理对应Web容器的会话，维护会话的生成、更新和销毁。
+ * 每个Context都会有自己的会话管理器，如果显式在配置文件中配置了会话管理器，则Context容器会使用该会话管理器
+ * 否则，Tomcat会分配默认的标准会话管理器（StandardManager）
+ * 同时，如果在集群环境下会使用集群会话管理器，可能是DeltaManager或BackupManager。
  * @author Craig R. McClanahan
  */
 public interface Manager {

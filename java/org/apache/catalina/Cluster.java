@@ -26,6 +26,8 @@ package org.apache.catalina;
  * used when sending information in the Cluster and
  * <code>ClusterInfo</code> used for receiving information in the Cluster.
  *
+ * 集群，Tomcat中有Engine和Host两个级别的集群
+ * 它主要把不同JVM上的全局引擎容器内的所有应用都抽象成集群，让它们能在不同的JVM进程之间互相通信，使会话同步、集群部署得以实现
  * @author Bip Thelin
  * @author Remy Maucherat
  */

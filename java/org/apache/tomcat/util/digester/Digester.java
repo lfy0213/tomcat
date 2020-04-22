@@ -811,6 +811,7 @@ public class Digester extends DefaultHandler2 {
 
 
     /**
+     * 确定属性是否为伪属性
      * Determine if an attribute is a fake attribute.
      * @param object The object
      * @param name The attribute name
@@ -848,7 +849,8 @@ public class Digester extends DefaultHandler2 {
 
     /**
      * Return the XMLReader to be used for parsing the input document.
-     *
+     * 获取xml阅读器
+     * 通过getParser方法获取对应的SAXParserImpl工厂,然后调用SAXParserImpl实例的newSAXParser方法,创建SAXParserImpl实例,然后设置相关属性
      * FIX ME: there is a bug in JAXP/XERCES that prevent the use of a
      * parser that contains a schema with a DTD.
      * @return the XML reader
@@ -1008,6 +1010,7 @@ public class Digester extends DefaultHandler2 {
         // Fire "end" events for all relevant rules in reverse order
         if (rules != null) {
             for (int i = 0; i < rules.size(); i++) {
+                // 按倒序执行rule的end方法
                 int j = (rules.size() - i) - 1;
                 try {
                     Rule rule = rules.get(j);
@@ -1158,6 +1161,8 @@ public class Digester extends DefaultHandler2 {
     /**
      * Process notification of the beginning of the document being reached.
      *
+     * 开始解析xml，这里主要是设置了一下编码
+     *
      * @exception SAXException if a parsing error is to be reported
      */
     @SuppressWarnings("deprecation")
@@ -1192,7 +1197,7 @@ public class Digester extends DefaultHandler2 {
 
     /**
      * Process notification of the start of an XML element being reached.
-     *
+     * 对元素开始解析，先拼接模式然后获取其对应的规则,遍历所有规则,调用其对应规则实例的begin方法
      * @param namespaceURI The Namespace URI, or the empty string if the element
      *   has no Namespace URI or if Namespace processing is not being performed.
      * @param localName The local name (without prefix), or the empty
@@ -1238,6 +1243,7 @@ public class Digester extends DefaultHandler2 {
         }
 
         // Fire "begin" events for all relevant rules
+        // 触发begin事件，调用当前元素设置的所有规则的begin方法
         List<Rule> rules = getRules().match(namespaceURI, match);
         matches.push(rules);
         if ((rules != null) && (rules.size() > 0)) {
@@ -1497,6 +1503,7 @@ public class Digester extends DefaultHandler2 {
         configure();
         InputSource input = new InputSource(new FileInputStream(file));
         input.setSystemId("file://" + file.getAbsolutePath());
+        // 实际调用SAXParserImpl.parse()
         getXMLReader().parse(input);
         return (root);
 
@@ -1825,7 +1832,7 @@ public class Digester extends DefaultHandler2 {
 
     /**
      * Push a new object onto the top of the object stack.
-     *
+     * 将对象压入栈顶，如果此时元素在栈底，那么赋值给root
      * @param object The new object
      */
     public void push(Object object) {

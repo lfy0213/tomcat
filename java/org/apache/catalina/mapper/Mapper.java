@@ -42,6 +42,9 @@ import org.apache.tomcat.util.res.StringManager;
  * Mapper, which implements the servlet API mapping rules (which are derived
  * from the HTTP rules).
  *
+ * 在tomcat中，Mapper有两个
+ * 1 servlet映射器，属于局部路由映射器，它只能负责本Context容器内的路由导航
+ * 2 connector中的mapper，属于全局路由器，可将请求映射到具体的engine，host，context
  * @author Remy Maucherat
  */
 public final class Mapper {
@@ -1710,9 +1713,22 @@ public final class Mapper {
         public final int slashCount;
         public final WebResourceRoot resources;
         public String[] welcomeResources;
+        /**
+         * 默认servlet，如果用的springMvc框架的话,默认servlet是org.springframework.web.servlet.DispatcherServlet
+         * 基本匹配结果，都会走到这个servlet
+         */
         public MappedWrapper defaultWrapper = null;
+        /**
+         * 精确匹配servlet
+         */
         public MappedWrapper[] exactWrappers = new MappedWrapper[0];
+        /**
+         * 通配符servlet
+         */
         public MappedWrapper[] wildcardWrappers = new MappedWrapper[0];
+        /**
+         * 扩展servlet
+         */
         public MappedWrapper[] extensionWrappers = new MappedWrapper[0];
         public int nesting = 0;
         private volatile boolean paused;

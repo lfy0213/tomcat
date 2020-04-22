@@ -45,6 +45,7 @@ public class SetPropertiesRule extends Rule {
             throws Exception {
 
         // Populate the corresponding properties of the top object
+        // 获取栈顶元素
         Object top = digester.peek();
         if (digester.log.isDebugEnabled()) {
             if (top != null) {
@@ -56,7 +57,7 @@ public class SetPropertiesRule extends Rule {
                                    "} Set NULL properties");
             }
         }
-
+        // 获取已设置的所有key-value对
         for (int i = 0; i < attributes.getLength(); i++) {
             String name = attributes.getLocalName(i);
             if ("".equals(name)) {
@@ -69,6 +70,7 @@ public class SetPropertiesRule extends Rule {
                         "} Setting property '" + name + "' to '" +
                         value + "'");
             }
+            // 调用setter方法设置属性
             if (!digester.isFakeAttribute(top, name)
                     && !IntrospectionUtils.setProperty(top, name, value)
                     && digester.getRulesValidation()) {

@@ -41,6 +41,29 @@ import java.util.regex.Pattern;
  * The child containers attached to a Host are generally implementations
  * of Context (representing an individual servlet context).
  *
+ *
+ * Host容器用于表示虚拟主机，比如localhost:8080/test/test1,那么tomcat会根据localhost抽象出来一个Host
+ * 一个Servlet引擎(也就是一个engine)可以包含多个host，一个host也可以包括多个ServletContext(对应着一个web应用)
+ *
+ *
+ * 主要包含若干Context容器、AccessLog组件、Pipeline组件、Cluster组件、Realm组件、HostConfig组件和Log组件
+ * AccessLog的作用责客户端请求访问日志的记录，该访问日志作用的范围是该虚拟主机的所有客户端的请求访问，不管访问哪个应用都会被该日志组件记录
+ * Host容器的Pipeline默认以StandardHostValve作为基础阀门，这个阀门主要的处理逻辑是先将当前线程上下文类加载器设置成Context容器的类加载器
+ * Cluster组件主要实现了集群功能，与不同jvm进程提供Host级别的集群会话及集群部署，tomcat只有两个组件具有cluster功能，engine & host
+ * Realm组件存储了用户、密码及权限等的数据对象
+ * HostConfig-生命周期监听器，把Web项目加载到对应的Host容器内
+ *
+ * 当Tomcat启动时，必须把对应Web应用的属性设置到对应的Context中，根据Web项目生成Context，并将Context添加到Host容器中。
+ * 另外，当我们把这些Web应用程序复制到指定目录后，还有一个重要的步骤就是加载，把Web项目加载到对应的Host容器内
+ *
+ * tomcat启动时，有两个阶段可以将Context添加到host中
+ * 1 用Digester框架解析server.xml文件时将生成的Context添加到Host中，这种方式需要你先将Context节点配置到server.xml的Host节点下
+ * 这样做的缺点是不但把应用配置与Web服务器耦合在一块，而且对server.xml配置的修改不会立即生效，除非重启Tomcat
+ *
+ * 2 是在server.xml加载解析完后再在特定时刻寻找指定的Context配置文件。
+ * 这时已经将应用配置解耦出Web服务器，配置文件可能为Web应用的/META-INF/context.xml文件，也可能是%CATALINA_HOME%/conf/[EngineName]/[HostName]/[WebName].xml。
+ *
+ *
  * @author Craig R. McClanahan
  */
 public interface Host extends Container {

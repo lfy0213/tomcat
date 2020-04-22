@@ -781,13 +781,15 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
      */
     @Override
     protected void startInternal() throws LifecycleException {
-
+        // 触发configure_start事件
         fireLifecycleEvent(CONFIGURE_START_EVENT, null);
+        // 设置server当前状态，启动中
         setState(LifecycleState.STARTING);
 
         globalNamingResources.start();
 
         // Start our defined Services
+        // 启动当前server下定义的所有的service
         synchronized (servicesLock) {
             for (int i = 0; i < services.length; i++) {
                 services[i].start();

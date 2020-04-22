@@ -31,6 +31,10 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.modeler.Registry;
 import org.apache.tomcat.util.res.StringManager;
 
+/**
+ * 继承自LifecycleBase
+ * 重写了initInternal()以及destroyInternal()，用于组件注册&取消注册到jmx
+ */
 public abstract class LifecycleMBeanBase extends LifecycleBase
         implements JmxEnabled {
 
@@ -49,10 +53,12 @@ public abstract class LifecycleMBeanBase extends LifecycleBase
      * Sub-classes wishing to perform additional initialization should override
      * this method, ensuring that super.initInternal() is the first call in the
      * overriding method.
+     *
+     *
+     * 将组件注册到jmx管理
      */
     @Override
     protected void initInternal() throws LifecycleException {
-
         // If oname is not null then registration has already happened via
         // preRegister().
         if (oname == null) {

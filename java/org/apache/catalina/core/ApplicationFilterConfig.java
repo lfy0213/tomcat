@@ -53,6 +53,11 @@ import org.apache.tomcat.util.res.StringManager;
  * managing the filter instances instantiated when a web application
  * is first started.
  *
+ * Servlet规范提供一个FilterConfig接口访问Filter的名称、初始化参数以及Servlet上下文，ApplicationFilterConfig是FilterConfig接口的具体实现
+ *
+ * Context容器的过滤器模块的主要对象就是包含了以上三个对象：FilterDef、ContextFilterMaps和ApplicationFilterConfig
+ * 而调用这些过滤器进行过滤的工作则由Wrapper容器中的管道负责。
+ *
  * @author Craig R. McClanahan
  */
 public final class ApplicationFilterConfig implements FilterConfig, Serializable {

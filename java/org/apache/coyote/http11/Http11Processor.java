@@ -75,12 +75,14 @@ public class Http11Processor extends AbstractProcessor {
 
     /**
      * Input.
+     * 输入缓冲区，从socket缓冲区中读取的数据流，会先存储到这里，内部维护了一个ByteBuffer
      */
     protected final Http11InputBuffer inputBuffer;
 
 
     /**
      * Output.
+     * 输出缓冲区，存储待输出到socket缓冲区中的数据流，内部维护了一个ByteBuffer
      */
     protected final Http11OutputBuffer outputBuffer;
 
@@ -676,10 +678,30 @@ public class Http11Processor extends AbstractProcessor {
         boolean keptAlive = false;
         SendfileState sendfileState = SendfileState.DONE;
 
+        /**
+         * 这段注释不是针对这段代码的。。。
+         * 这里就是一个while循环，不断的从客户端接收请求，解析请求，然后处理请求，组装响应报文，响应请求
+         * 所以也可以看出，http1.1是默认走长连接的(即一次tcp连接，可以多次请求和响应)，while循环的结束标志着连接的关闭
+         * 下列几种情况可以导致连接关闭
+         * 1 超过服务器设置的最大允许长连接数
+         * 2 超过服务器设置的一次连接最多请求数
+         * 3 超过长连接两次请求之间允许的最大超时
+         * 4 客户端请求头部告知需要关闭连接
+         * 5 响应码包含400、408、411、413、414、500、503、501等需要关闭连接
+         *
+         *
+         *
+         *
+         * 对于HTTP协议来说
+         * 每次读取的数据可能既包含了请求行也包含了请求头部，也可能不包含请求头部
+         * 所以每次只能尝试去解析报文。若解析不成功则等待下次轮询读取更多的数据后再尝试解析
+         *
+         */
         while (!getErrorState().isError() && keepAlive && !isAsync() && upgradeToken == null &&
                 sendfileState == SendfileState.DONE && !endpoint.isPaused()) {
 
             // Parsing the request header
+            // 解析http请求行与请求头
             try {
                 if (!inputBuffer.parseRequestLine(keptAlive)) {
                     if (inputBuffer.getParsingRequestLinePhase() == -1) {
@@ -742,9 +764,11 @@ public class Http11Processor extends AbstractProcessor {
                 foundUpgrade = connectionValues.nextElement().toLowerCase(
                         Locale.ENGLISH).contains("upgrade");
             }
-
+            // 如果请求头中包含了Connection:Upgrade， Upgrade:xxx
+            // 表示客户端希望将http协议升级为xxx协议，比如webSocket协议
             if (foundUpgrade) {
                 // Check the protocol
+                // 获取请求升级的协议类型
                 String requestedProtocol = request.getHeader("Upgrade");
 
                 UpgradeProtocol upgradeProtocol = httpUpgradeProtocols.get(requestedProtocol);
@@ -795,6 +819,7 @@ public class Http11Processor extends AbstractProcessor {
             if (getErrorState().isIoAllowed()) {
                 try {
                     rp.setStage(org.apache.coyote.Constants.STAGE_SERVICE);
+                    // todo
                     getAdapter().service(request, response);
                     // Handle when the response was committed before a serious
                     // error occurred.  Throwing a ServletException should both

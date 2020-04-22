@@ -50,6 +50,9 @@ import org.apache.juli.logging.LogFactory;
  * You can set the jvmRoute direct or with the System.property <b>jvmRoute</b>.
  *
  * @author Craig R. McClanahan
+ *
+ *
+ * 主要包含有Host组件、AccessLog组件、Pipeline组件、Cluster组件、Realm组件、LifecycleListener组件和Log组件
  */
 public class StandardEngine extends ContainerBase implements Engine {
 
@@ -64,6 +67,7 @@ public class StandardEngine extends ContainerBase implements Engine {
     public StandardEngine() {
 
         super();
+        // 设置基础阀门StandardEngineValve
         pipeline.setBasic(new StandardEngineValve());
         /* Set the jmvRoute using the system property jvmRoute */
         try {
@@ -255,10 +259,12 @@ public class StandardEngine extends ContainerBase implements Engine {
     protected synchronized void startInternal() throws LifecycleException {
 
         // Log our server identification information
+        // 输出engine启动日志
         if(log.isInfoEnabled())
             log.info( "Starting Servlet Engine: " + ServerInfo.getServerInfo());
 
         // Standard container startup
+        // 执行标准容器启动流程
         super.startInternal();
     }
 
@@ -392,6 +398,11 @@ public class StandardEngine extends ContainerBase implements Engine {
 
 
     // ----------------------------------------------------------- Inner classes
+
+    /**
+     * 负责客户端访问日志的记录
+     * 因为Engine容器是一个全局的Servlet容器，所以这里的访问日志作用的范围是所有客户端的请求访问
+     */
     protected static final class NoopAccessLog implements AccessLog {
 
         @Override

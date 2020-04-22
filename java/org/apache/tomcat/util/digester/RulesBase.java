@@ -155,10 +155,11 @@ public class RulesBase implements Rules {
             pattern = pattern.substring(0, patternLength-1);
         }
 
-
+        // 当前匹配模式的所有规则
         List<Rule> list = cache.get(pattern);
         if (list == null) {
             list = new ArrayList<>();
+            // 添加到缓存中
             cache.put(pattern, list);
         }
         list.add(rule);

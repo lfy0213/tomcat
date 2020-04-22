@@ -35,6 +35,8 @@ import org.apache.tomcat.util.res.StringManager;
  * Base implementation of the {@link Lifecycle} interface that implements the
  * state transition rules for {@link Lifecycle#start()} and
  * {@link Lifecycle#stop()}
+ *
+ * LifecycleBase提供了最基本的状态扭转方法
  */
 public abstract class LifecycleBase implements Lifecycle {
 
@@ -85,6 +87,7 @@ public abstract class LifecycleBase implements Lifecycle {
     /**
      * Allow sub classes to fire {@link Lifecycle} events.
      *
+     * 触发状态对应的事件
      * @param type  Event type
      * @param data  Data associated with event.
      */
@@ -103,8 +106,13 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         try {
+            // 触发before_init事件
             setStateInternal(LifecycleState.INITIALIZING, null, false);
+
+            // init
             initInternal();
+
+            // 触发before_before事件
             setStateInternal(LifecycleState.INITIALIZED, null, false);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -122,7 +130,7 @@ public abstract class LifecycleBase implements Lifecycle {
      */
     @Override
     public final synchronized void start() throws LifecycleException {
-
+        // 如果当前状态是准备启动，启动中，启动完成，那么可以断定是重复启动，直接返回
         if (LifecycleState.STARTING_PREP.equals(state) || LifecycleState.STARTING.equals(state) ||
                 LifecycleState.STARTED.equals(state)) {
 
@@ -135,7 +143,7 @@ public abstract class LifecycleBase implements Lifecycle {
 
             return;
         }
-
+        // 如果状态是new，执行初始化
         if (state.equals(LifecycleState.NEW)) {
             init();
         } else if (state.equals(LifecycleState.FAILED)) {
@@ -146,7 +154,10 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         try {
+            // 设置组件为STARTING_PREP状态，准备启动，同时触发before_start事件
             setStateInternal(LifecycleState.STARTING_PREP, null, false);
+
+            // 开始启动，如果一切顺利，那么在这个方法里，会将组件的状态置为STARTING
             startInternal();
             if (state.equals(LifecycleState.FAILED)) {
                 // This is a 'controlled' failure. The component put itself into the
@@ -157,6 +168,7 @@ public abstract class LifecycleBase implements Lifecycle {
                 // doing what they are supposed to.
                 invalidTransition(Lifecycle.AFTER_START_EVENT);
             } else {
+                // 设置状态，启动完成
                 setStateInternal(LifecycleState.STARTED, null, false);
             }
         } catch (Throwable t) {
@@ -345,6 +357,8 @@ public abstract class LifecycleBase implements Lifecycle {
      * {@link Lifecycle} event. It will also check that any attempted state
      * transition is valid for a sub-class.
      *
+     * 设置组件的状态
+     *
      * @param state The new state for this component
      * @param data  The data to pass to the associated {@link Lifecycle} event
      * @throws LifecycleException when attempting to set an invalid state
@@ -354,6 +368,13 @@ public abstract class LifecycleBase implements Lifecycle {
         setStateInternal(state, data, true);
     }
 
+    /**
+     * 设置组件的状态，并且触发对应的事件
+     * @param state
+     * @param data
+     * @param check
+     * @throws LifecycleException
+     */
     private synchronized void setStateInternal(LifecycleState state,
             Object data, boolean check) throws LifecycleException {
 

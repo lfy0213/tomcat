@@ -40,7 +40,7 @@ import java.io.IOException;
  * 7) Filters that trigger resource access events <br>
  * 8) XSL/T filters <br>
  * 9) Mime-type chain Filter <br>
- *
+ * 提供了为某个Web应用的所有请求和响应做统一逻辑处理的功能
  * @since Servlet 2.3
  */
 public interface Filter {

@@ -56,6 +56,30 @@ import org.apache.tomcat.util.http.CookieProcessor;
  * of Wrapper (representing individual servlet definitions).
  * <p>
  *
+ *
+ * Context容器对应实现了Web应用包含的语义，实现了Servlet和JSP的规范。
+ * 在tomcat中，一个Context与Web应用是1：1的关系
+ *
+ *
+ * Context容器包含若干Wrapper组件、Realm组件、AccessLog组件、ErrorPage组件、Manager组件、DirContext组件、安全认证组件
+ * JarScanner组件、过滤器组件、NamingResource组件、Mapper组件、Pipeline组件、WebappLoader组件、ApplicationContext组件
+ * InstanceManager组件、ServletContainerInitializer组件及Listeners（监听器）组件
+ *
+ *
+ * Tomcat启动过程中一般默认会在Context容器中添加4个监听器
+ *
+ * ContextConfig：负责在适当的阶段对Web项目的配置文件进行相关处理
+ * ContextConfig监听器可能是在Digester框架解析server.xml文件生成Context对象时添加的，也可能是由HostConfig监听器添加的
+ *
+ * TldConfig：主要负责对TLD标签配置文件的相关处理
+ * 在Context容器初始化（initInternal方法）时添加的
+ *
+ * NamingContextListener：负责对命名资源的创建、组织、绑定等相关的处理工作，使之符合JNDI标准
+ * Context容器启动（startInternal方法）时添加的
+ *
+ * MemoryLeakTrackingListener：主要用于跟踪重加载可能导致内存泄漏的相关处理。
+ * HostConfig监听器调用addChild方法把Context容器添加到Host容器时添加的
+ *
  * @author Craig R. McClanahan
  */
 public interface Context extends Container, ContextBind {
